@@ -13,45 +13,53 @@ function parseExplanationSections(text) {
 
   const sections = { problem: "", solution: "", practices: "" };
   
-  // Standard Markdown Header Split
-  const parts = text.split(/(?=^#{1,3}\s+)/m);
+  // 1. Precise Header Splitting
+  // We split by headers and then look at the label to assign the following content strictly
+  const headerRegex = /^#{1,3}\s+(.+?)$/gm;
+  const parts = text.split(headerRegex);
+  // parts[0] is everything before the first header (usually nothing or intro)
+  // parts[1] is the first header label, parts[2] is its content, and so on.
   
   if (parts.length > 1) {
-    parts.forEach(part => {
-      const lower = part.toLowerCase();
-      const content = part.replace(/^#{1,3}\s+.+?\n/, "").trim();
-      if (lower.includes("problem") || lower.includes("vulnerability") || lower.includes("overview"))
+    for (let i = 1; i < parts.length; i += 2) {
+      const label = parts[i].toLowerCase();
+      const content = parts[i + 1]?.trim() || "";
+      if (label.includes("problem") || label.includes("vulnerability") || label.includes("overview"))
         sections.problem = content;
-      else if (lower.includes("solution") || lower.includes("remediation") || lower.includes("fix"))
+      else if (label.includes("solution") || label.includes("remediation") || label.includes("fix") || label.includes("remedy"))
         sections.solution = content;
-      else if (lower.includes("best") || lower.includes("practice") || lower.includes("recommendation"))
+      else if (label.includes("best") || label.includes("practice") || label.includes("recommendation") || label.includes("prevention"))
         sections.practices = content;
-    });
+    }
   }
 
-  // Fallback: If no markdown headers, look for plain text labels (e.g., "Problem:", "Solution:")
+  // 2. Fallback to Plain Text Labels (e.g., "Problem:", "Solution:")
   if (!sections.problem && !sections.solution && !sections.practices) {
-    const lines = text.split("\n");
-    let currentKey = "solution";
-    lines.forEach(line => {
-      const lower = line.toLowerCase().trim();
-      if (lower.startsWith("problem:") || lower.startsWith("**problem**")) currentKey = "problem";
-      else if (lower.startsWith("solution:") || lower.startsWith("**solution**") || lower.startsWith("remediation:")) currentKey = "solution";
-      else if (lower.startsWith("best practice:") || lower.startsWith("**best practice**")) currentKey = "practices";
-      
-      sections[currentKey] += line + "\n";
+    const sectionStarts = [
+      { key: "problem", regex: /(?:problem|vulnerability|overview):/i },
+      { key: "solution", regex: /(?:solution|remediation|remediation steps|remedy):/i },
+      { key: "practices", regex: /(?:best practices|recommendations|prevention):/i }
+    ];
+    
+    let lastKey = null;
+    text.split("\n").forEach(line => {
+      const match = sectionStarts.find(s => s.regex.test(line));
+      if (match) lastKey = match.key;
+      if (lastKey) sections[lastKey] = (sections[lastKey] || "") + line + "\n";
     });
   }
 
-  // Final cleanup: if everything is empty, put all text in solution
-  if (!sections.problem.trim() && !sections.solution.trim() && !sections.practices.trim()) {
-    sections.solution = text.trim();
+  // 3. Final Fail-Safe: provide distinct content if AI failed to format properly
+  if (!sections.problem.trim()) sections.problem = text.split("\n")[0] || "No specific problem details provided.";
+  if (!sections.solution.trim()) sections.solution = text.trim();
+  if (!sections.practices.trim()) {
+      sections.practices = "Follow general security hardening guidelines:\n1. Regularly update your server environment.\n2. Implement a defense-in-depth strategy.\n3. Conduct periodic automated scans and manual audits.";
   }
 
   return {
     problem: sections.problem.trim(),
-    solution: sections.solution.trim(),
-    practices: sections.practices.trim()
+    solution: sections.solution.trim().replace(/^(?:solution|remediation|remediation steps|remedy):/i, "").trim(),
+    practices: sections.practices.trim().replace(/^(?:best practices|recommendations|prevention):/i, "").trim()
   };
 }
 
@@ -61,7 +69,6 @@ export default function FindingDrawer({ open, title, loading, explanation, sourc
 
   useEffect(() => {
     if (!open) return;
-    setActiveTab("solution");
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
@@ -78,8 +85,8 @@ export default function FindingDrawer({ open, title, loading, explanation, sourc
   if (!open) return null;
 
   const sections = parseExplanationSections(explanation);
-  const hasMultipleSections = !!(sections.problem || sections.practices);
-  const activeContent = sections[activeTab] || sections.solution || explanation;
+  const activeContent = sections[activeTab] || "";
+  const hasMultipleSections = !!(sections.problem || sections.practices || sections.solution);
 
   const sourceLabel =
     source === "gemini" ? "✦ Gemini AI" :
