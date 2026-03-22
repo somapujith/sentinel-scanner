@@ -1,0 +1,251 @@
+@import "tailwindcss";
+@import "./animations.css";
+
+@font-face {
+  font-family: 'Franie';
+  src: local('Franie Test Bold'), local('FranieTest-Bold'), local('Franie Test'), local('Franie');
+  font-weight: bold;
+}
+
+@theme {
+  --color-primary: #dc2626;
+  --color-dark: #000000;
+  --color-surface: #0a0a0a;
+  --color-text-main: #e0e0e0;
+  --color-text-muted: #999999;
+  --color-white: #FFFFFF;
+  --color-bg: #000000;
+
+  /* Scanner app — deep slate base, teal accents (glass UI) */
+  --color-surface-950: #020617;
+  --color-surface-900: #0a0f1a;
+  --color-surface-850: #0f1729;
+  --color-surface-800: #151f33;
+  --color-surface-750: #1c293d;
+  --color-surface-700: #243147;
+  --color-scanner-muted: #94a3b8;
+  --color-accent: #22d3ee;
+  --color-accent-muted: #0891b2;
+  --color-accent-deep: #0e7490;
+  --color-risk-critical: #fb7185;
+  --color-risk-high: #ef4444;
+  --color-risk-medium: #fbbf24;
+  --color-risk-low: #34d399;
+
+  --background-image-hero-glow: radial-gradient(
+    ellipse 85% 55% at 50% -15%,
+    rgba(34, 211, 238, 0.12),
+    transparent 72%
+  );
+  --background-image-grid-fade: linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+
+  --shadow-glow: 0 0 0 1px rgba(34, 211, 238, 0.14), 0 20px 50px -12px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 8px 32px -8px rgba(0, 0, 0, 0.55);
+  --shadow-card-hover: 0 1px 0 0 rgba(255, 255, 255, 0.07) inset, 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  --font-sans: "Inter", "Neue Haas Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Anton", "Neue Haas Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Custom easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-custom: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Custom durations */
+  --duration-350: 350ms;
+  --duration-400: 400ms;
+  --duration-600: 600ms;
+
+  /* Custom opacity */
+  --opacity-12: 0.12;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+:root {
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 200ms;
+  --dur-normal: 400ms;
+  --dur-slow: 700ms;
+  --dur-xslow: 1200ms;
+}
+
+body {
+  background-color: #000000;
+  color: var(--color-text-main);
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body.scanner-mode {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  cursor: auto;
+  color: #e2e8f0;
+}
+
+/* Scanner UI uses Inter for headings — marketing `font-display` (Anton) is swapped here */
+body.scanner-mode .font-display {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+body.scanner-mode #cursor,
+body.scanner-mode #cursor-ring {
+  display: none !important;
+}
+
+/* Mobile viewport height fixes */
+@media (max-height: 600px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Prevent zoom on input focus for iOS */
+@media only screen and (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+@media (pointer: fine) {
+  body:not(.scanner-mode) {
+    cursor: none;
+  }
+}
+
+/* Hide scrollbar for lenis smooth scrolling */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* Custom Cursor — hidden on touch devices */
+@media (pointer: fine) {
+  #cursor {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99999;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s, height 0.2s, background 0.2s;
+    mix-blend-mode: difference;
+  }
+
+  #cursor-ring {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid rgba(220, 38, 38, 0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99998;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s, border-color 0.3s, transform 0.2s ease-out;
+  }
+}
+
+@media (pointer: coarse) {
+  #cursor, #cursor-ring {
+    display: none !important;
+  }
+  body {
+    cursor: auto;
+  }
+  * {
+    cursor: auto !important;
+  }
+}
+
+/* 3D transform utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.group-hover\:rotate-y-180:is(:where(.group):hover *) {
+  transform: rotateY(180deg);
+}
+
+/* Scanner pages: grid background utility */
+.bg-grid {
+  background-size: 48px 48px;
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: rgba(6, 182, 212, 0.3);
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: rgba(71, 85, 105, 0.5);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.6);
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
+  <rect width="400" height="200" fill="#f5f0ea"/>
+  <!-- Eye icon for Esthetic Insights -->
+  <g transform="translate(60, 100)">
+    <path d="M -40,0 Q 0,-30 40,0 Q 0,30 -40,0 Z" fill="none" stroke="#2d2d2d" stroke-width="4"/>
+    <circle cx="0" cy="0" r="12" fill="#2d2d2d"/>
+    <circle cx="4" cy="-4" r="4" fill="#f5f0ea"/>
+  </g>
+  <text x="120" y="90" font-family="Georgia, serif" font-size="26" font-weight="700" fill="#2d2d2d" text-anchor="start" letter-spacing="3">ESTHETIC</text>
+  <text x="120" y="125" font-family="Georgia, serif" font-size="26" font-weight="400" fill="#8a7060" text-anchor="start" letter-spacing="3">INSIGHTS</text>
+</svg>

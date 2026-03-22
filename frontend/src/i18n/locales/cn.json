@@ -1,0 +1,26 @@
+{
+  "nav": {
+    "home": "首页",
+    "about": "关于",
+    "projects": "模块",
+    "contact": "打开应用",
+    "scanner": "扫描器"
+  },
+  "hero": {
+    "headline_line1": "发现信号。",
+    "headline_line2": "保持授权。",
+    "headline_line3": "安心交付。",
+    "sub": "面向您有权测试的 URL 或 IP 的轻量安全快照：端口、TLS、HTTP 头与谨慎的反射探测，附评分与导出。"
+  },
+  "about": {
+    "label": "你在构建什么？",
+    "stat_ventures_label": "扫描模块",
+    "stat_models_label": "导出格式",
+    "stat_builders_label": "对比运行"
+  },
+  "footer": {
+    "tagline": "仅限授权测试。不能替代完整渗透测试或合规认证。",
+    "email_placeholder": "您的电子邮件（可选）",
+    "hours": "有疑问？请阅读文档与安全页面，或在应用中运行扫描。"
+  }
+}

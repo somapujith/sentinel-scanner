@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#8B0000"/>
+  <g transform="translate(200,160)">
+    <!-- Vertical + Horizontal bars -->
+    <rect x="-8" y="-50" width="16" height="100" rx="4" fill="#C9A84C"/>
+    <rect x="-50" y="-8" width="100" height="16" rx="4" fill="#C9A84C"/>
+    <!-- Diagonal bars -->
+    <rect x="-8" y="-50" width="16" height="100" rx="4" fill="#C9A84C" transform="rotate(45)"/>
+    <rect x="-8" y="-50" width="16" height="100" rx="4" fill="#C9A84C" transform="rotate(-45)"/>
+    <!-- Center -->
+    <circle cx="0" cy="0" r="12" fill="#C9A84C"/>
+    <!-- Top petal -->
+    <ellipse cx="0" cy="-58" rx="7" ry="12" fill="#C9A84C"/>
+  </g>
+  <text x="200" y="290" font-family="Georgia, 'Times New Roman', serif" font-size="62" fill="#C9A84C" text-anchor="middle" letter-spacing="6">anaar</text>
+</svg>
