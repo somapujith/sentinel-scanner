@@ -16,9 +16,9 @@ function Background() {
 
 export default function SecurityPage() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-surface-950 text-slate-200">
+    <div className="relative min-h-screen overflow-x-hidden bg-black text-slate-200">
       <Background />
-      <header className="sticky top-0 z-50 border-b border-slate-800/60 bg-surface-950/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link
             to="/"
@@ -29,7 +29,7 @@ export default function SecurityPage() {
           </Link>
           <Link
             to="/app"
-            className="rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3.5 py-2 text-sm font-medium text-cyan-200"
+            className="rounded-lg border border-primary/40 bg-primary/12 px-3.5 py-2 text-sm font-medium text-red-100"
           >
             Open app
           </Link>
@@ -38,8 +38,8 @@ export default function SecurityPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div className="mb-10 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 ring-1 ring-cyan-400/25">
-            <Shield className="h-5 w-5 text-cyan-400" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/12 ring-1 ring-primary/30">
+            <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white">Security &amp; trust</h1>
@@ -58,11 +58,11 @@ export default function SecurityPage() {
 
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
-              <KeyRound className="h-5 w-5 text-cyan-400" />
+              <KeyRound className="h-5 w-5 text-primary" />
               API authentication
             </h2>
             <p className="text-slate-400 mt-3">
-              When enabled, optional API keys protect <code className="font-mono text-xs text-cyan-300/90">/api/*</code> routes
+              When enabled, optional API keys protect <code className="font-mono text-xs text-primary/90">/api/*</code> routes
               except health checks. Configure keys on the server; never commit secrets. The client may use a public{" "}
               <code className="font-mono text-xs">VITE_API_KEY</code> when required by your deployment.
             </p>
@@ -70,7 +70,7 @@ export default function SecurityPage() {
 
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
-              <Network className="h-5 w-5 text-cyan-400" />
+              <Network className="h-5 w-5 text-primary" />
               CORS &amp; trusted proxies
             </h2>
             <p className="text-slate-400 mt-3">
@@ -81,7 +81,7 @@ export default function SecurityPage() {
 
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
-              <Lock className="h-5 w-5 text-cyan-400" />
+              <Lock className="h-5 w-5 text-primary" />
               Rate limits
             </h2>
             <p className="text-slate-400 mt-3">
@@ -107,7 +107,7 @@ export default function SecurityPage() {
 
           <p className="text-slate-500 text-xs border-t border-white/[0.06] pt-8">
             See also{" "}
-            <Link to="/docs" className="text-cyan-400 hover:underline">
+            <Link to="/docs" className="text-primary hover:underline">
               Documentation
             </Link>{" "}
             and your repo&apos;s <code className="font-mono">SECURITY.md</code> if present.

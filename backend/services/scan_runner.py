@@ -34,11 +34,19 @@ def _update_scan(scan_id: str, status: str) -> None:
 async def run_scan(scan_id: str, target: str, modules: list[str]) -> None:
     all_findings: list[dict[str, Any]] = []
     try:
-        for mod_id in modules:
-            _update_scan(scan_id, status=f"running:{mod_id}")
+        _update_scan(scan_id, status="running")
+
+        async def _run_module(mod_id: str) -> list[dict[str, Any]]:
             runner = MODULE_MAP[mod_id]
-            chunk = await asyncio.to_thread(runner, target)
-            all_findings.extend(chunk)
+            return await asyncio.to_thread(runner, target)
+
+        # Run all selected modules in parallel for much faster scans
+        results = await asyncio.gather(*[_run_module(m) for m in modules], return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue  # Skip failed modules but continue with others
+            all_findings.extend(result)
 
         scored = score_findings(all_findings)
         with get_session() as session:

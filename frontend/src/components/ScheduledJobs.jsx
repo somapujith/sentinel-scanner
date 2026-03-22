@@ -68,7 +68,7 @@ export default function ScheduledJobs({ onRunStarted }) {
     <Card className="ring-1 ring-white/[0.06]">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-cyan-400/80" aria-hidden />
+          <CalendarClock className="h-5 w-5 text-primary/85" aria-hidden />
           <h2 className="text-lg font-semibold tracking-tight text-white">Scheduled scans</h2>
         </div>
         <p className="mt-1 text-sm text-slate-500">
@@ -125,7 +125,7 @@ export default function ScheduledJobs({ onRunStarted }) {
                   onClick={() => runNow(r.id)}
                   disabled={busyId === r.id}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-50",
+                    "inline-flex items-center gap-1 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-red-100 hover:bg-primary/18 disabled:opacity-50",
                   )}
                 >
                   <Play className="h-3.5 w-3.5" aria-hidden />

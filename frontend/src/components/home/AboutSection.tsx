@@ -1,11 +1,9 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { AnimatedCounter } from '../shared/AnimatedCounter';
 import { TextScrub } from '../shared/TextScrub';
 
 export const AboutSection: React.FC = () => {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -15,9 +13,9 @@ export const AboutSection: React.FC = () => {
   const lineWidth = useTransform(scrollYProgress, [0.15, 0.5], ['0%', '100%']);
 
   const stats = [
-    { value: 4, suffix: '', label: t('about.stat_ventures_label') },
-    { value: 3, suffix: '', label: t('about.stat_models_label') },
-    { value: 2, suffix: '', label: t('about.stat_builders_label') },
+    { value: 4, suffix: '', label: 'Selectable modules' },
+    { value: 3, suffix: '', label: 'Export formats (PDF, JSON, CSV)' },
+    { value: 2, suffix: '', label: 'Scans in compare' },
   ];
 
   return (
@@ -134,7 +132,7 @@ export const AboutSection: React.FC = () => {
       {/* Text scrub paragraph */}
       <div className="relative z-10 max-w-[900px] mb-20 md:mb-28">
         <TextScrub
-          text="Sentinel Scanner is a web security audit tool for authorized targets: TCP port discovery, HTTP header review, TLS posture, and optional reflection-style probes. Every run requires explicit consent; results include risk-style scoring, mitigations, and PDF or structured exports. It does not replace a full penetration test."
+          text="Sentinel Scanner is a browser-based security posture snapshot for a URL or IP you are allowed to test: TCP port discovery, HTTP headers, TLS review, and optional reflection-style probes. Consent is required before any run; findings include severity-style labels, mitigations, and PDF, JSON, or CSV exports. It is not a replacement for full penetration testing, bug bounty triage, or compliance certification."
           className="text-[clamp(18px,2.2vw,28px)] text-white leading-[1.6] font-medium tracking-[-0.01em]"
           customWordStyles={{
             Sentinel: 'font-display text-primary tracking-normal font-normal opacity-100',

@@ -5,9 +5,7 @@ import { Footer } from '../components/layout/Footer';
 import { HeroSection } from '../components/home/HeroSection';
 import { AboutSection } from '../components/home/AboutSection';
 import { TeamSection } from '../components/home/TeamSection';
-import { WhyADM } from '../components/home/WhyADM';
-import { MarqueeSection } from '../components/home/MarqueeSection';
-import { ProjectsSection } from '../components/home/ProjectsSection';
+import { WhySentinel } from '../components/home/WhySentinel';
 import { ParticleBackground } from '../components/home/ParticleBackground';
 
 import { NoiseOverlay } from '../components/layout/NoiseOverlay';
@@ -18,7 +16,7 @@ interface HomeProps {
 
 export const Home: React.FC<HomeProps> = ({ isLoading = false }) => {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <ParticleBackground />
       <NoiseOverlay />
       <Navbar visible={!isLoading} />
@@ -26,10 +24,8 @@ export const Home: React.FC<HomeProps> = ({ isLoading = false }) => {
 
       <main>
         <HeroSection />
-        <MarqueeSection />
         <AboutSection />
-        <ProjectsSection />
-        <WhyADM />
+        <WhySentinel />
         <TeamSection />
       </main>
 

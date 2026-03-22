@@ -49,7 +49,7 @@ export default function FindingDrawer({ open, title, loading, explanation, sourc
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40"
+            className="rounded-lg p-2 text-slate-400 transition hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
             aria-label="Close"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -69,11 +69,34 @@ export default function FindingDrawer({ open, title, loading, explanation, sourc
           )}
           {!loading && !error && explanation && (
             <>
-              <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                <Sparkles className="h-3.5 w-3.5 text-violet-400/80" aria-hidden />
-                {source === "anthropic" ? "Claude" : "Local summary"}
+              <div className={`mb-4 flex items-center gap-2 rounded-lg px-3 py-1.5 ring-1 w-fit ${
+                source === "gemini" ? "bg-teal-500/10 ring-teal-500/25" :
+                source === "openrouter" ? "bg-violet-500/10 ring-violet-500/25" :
+                source === "openai" ? "bg-emerald-500/10 ring-emerald-500/25" :
+                source === "anthropic" ? "bg-amber-500/10 ring-amber-500/25" :
+                "bg-white/[0.03] ring-white/[0.06]"
+              }`}>
+                <Sparkles className={`h-3.5 w-3.5 ${
+                  source === "gemini" ? "text-teal-400" :
+                  source === "openrouter" ? "text-violet-400" :
+                  source === "openai" ? "text-emerald-400" :
+                  source === "anthropic" ? "text-amber-400" : "text-primary/80"
+                }`} aria-hidden />
+                <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${
+                  source === "gemini" ? "text-teal-300" :
+                  source === "openrouter" ? "text-violet-300" :
+                  source === "openai" ? "text-emerald-300" :
+                  source === "anthropic" ? "text-amber-300" : "text-slate-400"
+                }`}>
+                  {source === "gemini" ? "✦ Gemini AI" : 
+                   source === "openrouter" ? "⬡ OpenRouter AI" : 
+                   source === "openai" ? "◆ OpenAI Analysis" : 
+                   source === "anthropic" ? "◈ Claude Analysis" : "Local Summary"}
+                </span>
               </div>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{explanation}</p>
+              <div className="prose prose-invert prose-sm max-w-none">
+                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-300 font-medium">{explanation}</p>
+              </div>
             </>
           )}
         </div>

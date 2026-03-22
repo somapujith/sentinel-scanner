@@ -32,7 +32,7 @@ const MODULES = [
 
 export default function ScanInput({ onScanStarted }) {
   const [target, setTarget] = useState("");
-  const [modules, setModules] = useState(["port", "header", "ssl"]);
+  const [modules, setModules] = useState(["port", "header", "ssl", "inject"]);
   const [schedule, setSchedule] = useState("once");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -78,16 +78,16 @@ export default function ScanInput({ onScanStarted }) {
   const valid = !error && target.length > 0 && modules.length > 0 && consent;
 
   return (
-    <Card className="animate-fade-in p-6 sm:p-8 ring-1 ring-cyan-500/10">
+    <Card className="animate-fade-in p-6 sm:p-8 ring-1 ring-primary/15">
       <CardHeader className="mb-6">
         <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/18 to-transparent ring-1 ring-cyan-400/25">
-            <Crosshair className="h-5 w-5 text-cyan-400" strokeWidth={1.5} aria-hidden />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/30 shadow-[0_0_16px_-4px_rgba(220,38,38,0.4)]">
+            <Crosshair className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-semibold tracking-tight text-white sm:text-lg">Configure scan</h2>
-              <span className="inline-flex items-center gap-1 rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300/95 shadow-[0_0_12px_-2px_rgba(139,92,246,0.35)]">
+              <span className="inline-flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-300/95 shadow-[0_0_12px_-2px_rgba(239,68,68,0.35)]">
                 <Sparkles className="h-3 w-3" />
                 Live
               </span>
@@ -105,7 +105,7 @@ export default function ScanInput({ onScanStarted }) {
             Target
           </label>
           <input
-            className="h-11 w-full rounded-lg border border-slate-700/60 bg-surface-900/90 px-4 font-mono text-sm text-slate-100 shadow-inner shadow-black/25 placeholder:text-slate-600 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+            className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/40 px-4 font-mono text-sm text-slate-100 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] placeholder:text-slate-600 focus:border-primary/50 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
             value={target}
             onChange={(e) => {
               setTarget(e.target.value);
@@ -135,17 +135,18 @@ export default function ScanInput({ onScanStarted }) {
                 <label
                   key={m.id}
                   className={cn(
-                    "group relative flex cursor-pointer flex-col gap-1 rounded-lg border px-3.5 py-3 transition-all duration-200",
+                    "group relative flex cursor-pointer flex-col gap-1 rounded-xl border px-3.5 py-3.5 transition-all duration-300",
                     active
-                      ? "border-cyan-500/40 bg-cyan-500/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_0_1px_rgba(34,211,238,0.12)]"
-                      : "border-slate-800/70 bg-surface-900/45 hover:border-slate-700 hover:bg-surface-900/75",
-                    m.intrusive && "ring-1 ring-amber-500/20",
+                      ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_12px_-4px_rgba(220,38,38,0.25)] ring-1 ring-primary/20"
+                      : "border-white/[0.06] bg-black/20 hover:border-white/[0.1] hover:bg-black/40",
+                    m.intrusive && active && "ring-amber-500/30 border-amber-500/40 bg-amber-500/[0.04]",
+                    m.intrusive && !active && "ring-1 ring-amber-500/10",
                   )}
                 >
                   <input type="checkbox" className="sr-only" checked={active} onChange={() => toggleModule(m.id)} />
                   <div className="flex items-center gap-2.5">
                     <Icon
-                      className={cn("h-4 w-4 shrink-0 transition-colors", active ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-400")}
+                      className={cn("h-4 w-4 shrink-0 transition-colors duration-300", active ? (m.intrusive ? "text-amber-400" : "text-primary/90") : "text-slate-500 group-hover:text-slate-400")}
                       aria-hidden
                     />
                     <span className={cn("text-sm font-medium", active ? "text-white" : "text-slate-300")}>{m.label}</span>
@@ -162,13 +163,13 @@ export default function ScanInput({ onScanStarted }) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-800/60 bg-surface-900/50 p-4">
+        <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 transition-colors hover:bg-black/40">
           <label className="flex cursor-pointer items-start gap-3 text-left">
             <input
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-surface-900 text-cyan-500 focus:ring-2 focus:ring-cyan-500/30"
+              className="mt-1 h-4 w-4 shrink-0 rounded border-white/20 bg-surface-900 text-primary focus:ring-2 focus:ring-primary/35"
             />
             <span className="text-sm leading-relaxed text-slate-300">
               I confirm I am authorized to test this target (systems I own or have written permission to assess). Scans may be logged with consent time and IP.
@@ -183,7 +184,7 @@ export default function ScanInput({ onScanStarted }) {
               Schedule
             </label>
             <select
-              className="h-11 w-full cursor-pointer rounded-lg border border-slate-700/60 bg-surface-900/90 px-3 text-sm text-slate-200 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+              className="h-11 w-full cursor-pointer rounded-xl border border-white/[0.08] bg-black/40 px-3 text-sm text-slate-200 focus:border-primary/50 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
               value={schedule}
               onChange={(e) => setSchedule(e.target.value)}
             >
@@ -200,7 +201,7 @@ export default function ScanInput({ onScanStarted }) {
               </label>
               <input
                 type="email"
-                className="h-11 w-full rounded-lg border border-slate-700/60 bg-surface-900/90 px-4 text-sm text-slate-100 placeholder:text-slate-600 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                className="h-11 w-full rounded-lg border border-slate-700/60 bg-surface-900/90 px-4 text-sm text-slate-100 placeholder:text-slate-600 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/25"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -213,9 +214,9 @@ export default function ScanInput({ onScanStarted }) {
           type="button"
           onClick={handleSubmit}
           disabled={!valid || submitting}
-          className="group relative mt-1 flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-cyan-500 to-sky-500 text-sm font-semibold text-surface-950 shadow-lg shadow-cyan-500/25 transition hover:from-cyan-400 hover:to-sky-400 hover:shadow-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          className="group relative mt-2 flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-t from-red-600/90 to-red-500 text-sm font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(220,38,38,0.35)] transition-all hover:from-red-500 hover:to-red-400 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_6px_20px_rgba(220,38,38,0.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
-          <span className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition group-hover:opacity-100" />
+          <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition group-hover:opacity-100" />
           {submitting ? (
             <>
               <Loader2 className="relative h-4 w-4 animate-spin" aria-hidden />

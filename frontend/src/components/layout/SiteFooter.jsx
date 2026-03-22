@@ -28,7 +28,7 @@ export default function SiteFooter({ variant = "default" }) {
             </div>
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
               {FOOTER_LINKS.map((item) => (
-                <Link key={item.to} to={item.to} className="hover:text-cyan-400/90 transition-colors">
+                <Link key={item.to} to={item.to} className="hover:text-primary transition-colors">
                   {item.label}
                 </Link>
               ))}
@@ -36,7 +36,7 @@ export default function SiteFooter({ variant = "default" }) {
                 href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 hover:text-cyan-400/90 transition-colors"
+                className="inline-flex items-center gap-1.5 hover:text-primary transition-colors"
               >
                 <Github className="h-4 w-4" aria-hidden />
                 GitHub

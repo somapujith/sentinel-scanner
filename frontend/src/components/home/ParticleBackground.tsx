@@ -43,6 +43,7 @@ export const ParticleBackground: React.FC = () => {
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.style.display = 'block';
     container.appendChild(renderer.domElement);
 
     // Particle system
@@ -201,7 +202,7 @@ export const ParticleBackground: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 w-full h-full pointer-events-none"
+      className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none"
       style={{ zIndex: 0 }}
     />
   );

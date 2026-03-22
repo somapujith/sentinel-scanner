@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { useUIStore } from '../../store/uiStore';
-import { ChevronDown } from 'lucide-react';
 import { MagneticButton } from '../shared/MagneticButton';
+import { SentinelLogo } from '../branding/SentinelLogo';
 
 interface NavbarProps {
   transparent?: boolean;
@@ -15,18 +14,15 @@ type NavLinkItem =
   | { label: string; href: string }
   | { label: string; to: string };
 
-const languages = [
-  { code: 'en', label: 'EN' },
-  { code: 'cn', label: 'CN' },
-  { code: 'th', label: 'TH' },
-  { code: 'vn', label: 'VN' },
-] as const;
+const NAV_LINKS: NavLinkItem[] = [
+  { label: 'Home', href: '#hero' },
+  { label: 'About', href: '#about' },
+  { label: 'Scanner', to: '/app' },
+];
 
 export const Navbar: React.FC<NavbarProps> = ({ transparent = true, visible = true }) => {
-  const { t, i18n } = useTranslation();
-  const { navOpen, setNavOpen, language, setLanguage } = useUIStore();
+  const { navOpen, setNavOpen } = useUIStore();
   const [scrolled, setScrolled] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
 
   const rafRef = useRef<number | null>(null);
   const scrolledRef = useRef(false);
@@ -50,20 +46,6 @@ export const Navbar: React.FC<NavbarProps> = ({ transparent = true, visible = tr
     };
   }, []);
 
-  const navLinks: NavLinkItem[] = [
-    { label: t('nav.home'), href: '#hero' },
-    { label: t('nav.about'), href: '#about' },
-    { label: t('nav.projects'), href: '#modules' },
-    { label: t('nav.scanner'), to: '/app' },
-  ];
-
-  const handleLangChange = (code: typeof languages[number]['code']) => {
-    setLanguage(code);
-    i18n.changeLanguage(code);
-    setLangOpen(false);
-    document.documentElement.lang = code === 'cn' ? 'zh' : code === 'vn' ? 'vi' : code;
-  };
-
   return (
     <motion.nav
       initial={{ y: '-100%' }}
@@ -78,13 +60,15 @@ export const Navbar: React.FC<NavbarProps> = ({ transparent = true, visible = tr
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 h-[72px]"
     >
       <div className="flex items-center">
-        <a href="#hero" aria-label="Sentinel Scanner — back to top" className="text-2xl font-display text-primary tracking-tighter">
-          SENTINEL
-        </a>
+        <SentinelLogo
+          variant="wordmark"
+          href="#hero"
+          aria-label="Sentinel Scanner — back to top"
+        />
       </div>
 
       <div className="hidden lg:flex items-center gap-9">
-        {navLinks.map((link, i) => (
+        {NAV_LINKS.map((link, i) => (
           <MagneticButton key={link.label}>
             {'to' in link ? (
               <motion.div
@@ -116,56 +100,22 @@ export const Navbar: React.FC<NavbarProps> = ({ transparent = true, visible = tr
         ))}
       </div>
 
-      <div className="flex items-center gap-5">
-        <div className="relative hidden md:block">
-          <button 
-            onClick={() => setLangOpen(!langOpen)}
-            aria-label="Select language"
-            aria-expanded={langOpen}
-            className="flex items-center gap-1 text-xs font-semibold text-white/50 hover:text-white tracking-[0.1em] uppercase transition-colors"
-          >
-            {language} <ChevronDown size={14} />
-          </button>
-          <AnimatePresence>
-            {langOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-full right-0 mt-2 bg-black border border-white/10 rounded overflow-hidden flex flex-col"
-              >
-                {languages.map((l) => (
-                  <button
-                    key={l.code}
-                    onClick={() => handleLangChange(l.code)}
-                    className={`px-4 py-2 text-xs font-semibold tracking-[0.1em] uppercase text-left hover:bg-white/5 transition-colors ${language === l.code ? 'text-primary' : 'text-white/50'}`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-
-
-        <button 
+      <div className="flex items-center">
+        <button
           className="lg:hidden flex flex-col gap-[5px] p-2 z-50 relative"
           onClick={() => setNavOpen(!navOpen)}
           aria-label={navOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={navOpen}
         >
-          <motion.span 
+          <motion.span
             animate={{ rotate: navOpen ? 45 : 0, y: navOpen ? 6.5 : 0 }}
             className="block w-6 h-[1.5px] bg-white transition-transform"
           />
-          <motion.span 
+          <motion.span
             animate={{ opacity: navOpen ? 0 : 1 }}
             className="block w-6 h-[1.5px] bg-white transition-opacity"
           />
-          <motion.span 
+          <motion.span
             animate={{ rotate: navOpen ? -45 : 0, y: navOpen ? -6.5 : 0 }}
             className="block w-6 h-[1.5px] bg-white transition-transform"
           />

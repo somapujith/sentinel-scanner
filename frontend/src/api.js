@@ -1,11 +1,18 @@
 const base = import.meta.env.VITE_API_URL || "";
 
-/** Headers including optional `VITE_API_KEY` for protected deployments. */
+/** Headers including JWT token from localStorage, or VITE_API_KEY for protected deployments. */
 export function authHeaders(extra = {}) {
   const h = { ...extra };
-  const k = import.meta.env.VITE_API_KEY;
-  if (k && !h["X-API-Key"] && !h.Authorization) {
-    h["X-API-Key"] = k;
+  // Prefer JWT token from login session
+  const jwt = localStorage.getItem("sentinel_token");
+  if (jwt && !h["Authorization"]) {
+    h["Authorization"] = `Bearer ${jwt}`;
+  } else {
+    // Fallback to static API key for deployments that use VITE_API_KEY
+    const k = import.meta.env.VITE_API_KEY;
+    if (k && !h["X-API-Key"] && !h.Authorization) {
+      h["X-API-Key"] = k;
+    }
   }
   return h;
 }

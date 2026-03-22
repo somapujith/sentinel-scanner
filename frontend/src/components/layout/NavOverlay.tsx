@@ -2,11 +2,9 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../store/uiStore';
-import { useTranslation } from 'react-i18next';
 
 export const NavOverlay: React.FC = () => {
   const { navOpen, setNavOpen } = useUIStore();
-  const { t } = useTranslation();
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -21,9 +19,8 @@ export const NavOverlay: React.FC = () => {
     | { label: string; href: string; tag: string };
 
   const navItems: OverlayItem[] = [
-    { label: t('nav.scanner'), to: '/app', tag: 'PRODUCT' },
-    { label: t('nav.projects'), href: '#modules', tag: 'CAPABILITIES' },
-    { label: t('nav.about'), href: '#about', tag: 'OVERVIEW' },
+    { label: 'Scanner', to: '/app', tag: 'PRODUCT' },
+    { label: 'About', href: '#about', tag: 'OVERVIEW' },
     { label: 'Stack', href: '#team', tag: 'TECH' },
   ];
 
@@ -40,7 +37,7 @@ export const NavOverlay: React.FC = () => {
           aria-label="Navigation menu"
         >
           <nav className="flex-1 flex overflow-hidden pt-[72px]">
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 p-4 sm:p-6 lg:p-12 gap-2 sm:gap-3">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-6 lg:p-12 gap-2 sm:gap-3">
               {navItems.map((item, i) =>
                 'to' in item ? (
                   <motion.div

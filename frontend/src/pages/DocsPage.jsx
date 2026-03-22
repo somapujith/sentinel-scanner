@@ -16,9 +16,9 @@ function Background() {
 
 export default function DocsPage() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-surface-950 text-slate-200">
+    <div className="relative min-h-screen overflow-x-hidden bg-black text-slate-200">
       <Background />
-      <header className="sticky top-0 z-50 border-b border-slate-800/60 bg-surface-950/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link
             to="/"
@@ -29,7 +29,7 @@ export default function DocsPage() {
           </Link>
           <Link
             to="/app"
-            className="rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3.5 py-2 text-sm font-medium text-cyan-200"
+            className="rounded-lg border border-primary/40 bg-primary/12 px-3.5 py-2 text-sm font-medium text-red-100"
           >
             Open app
           </Link>
@@ -38,8 +38,8 @@ export default function DocsPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div className="mb-10 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 ring-1 ring-cyan-400/25">
-            <BookOpen className="h-5 w-5 text-cyan-400" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/12 ring-1 ring-primary/30">
+            <BookOpen className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white">Documentation</h1>
@@ -50,7 +50,7 @@ export default function DocsPage() {
         <div className="prose prose-invert prose-sm max-w-none space-y-10 text-slate-300">
           <section>
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white">
-              <Server className="h-5 w-5 text-cyan-400" />
+              <Server className="h-5 w-5 text-primary" />
               Scan configuration
             </h2>
             <ul className="text-slate-400 mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed">
@@ -73,25 +73,25 @@ export default function DocsPage() {
 
           <section>
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white">
-              <Radio className="h-5 w-5 text-cyan-400" />
+              <Radio className="h-5 w-5 text-primary" />
               Execution &amp; live updates
             </h2>
             <p className="text-slate-400 mt-3 text-sm leading-relaxed">
               Scans run in the background with status progression: queued → running per module → complete or failed. The UI
-              uses Server-Sent Events (<code className="font-mono text-xs text-cyan-300/90">/events</code>) plus polling for
+              uses Server-Sent Events (<code className="font-mono text-xs text-primary/90">/events</code>) plus polling for
               scan detail so the interface stays responsive.
             </p>
           </section>
 
           <section>
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white">
-              <Shield className="h-5 w-5 text-cyan-400" />
+              <Shield className="h-5 w-5 text-primary" />
               Results &amp; risk model
             </h2>
             <p className="text-slate-400 mt-3 text-sm leading-relaxed">
               Findings include title, type, risk tier, CVSS-style score, description, affected component, and mitigation hints.
               The engine applies aggregate risk scoring with per-finding severity-style labels. Optional AI explanations use
-              Anthropic when <code className="font-mono text-xs text-cyan-300/90">ANTHROPIC_API_KEY</code> is set; otherwise a
+              Anthropic when <code className="font-mono text-xs text-primary/90">ANTHROPIC_API_KEY</code> is set; otherwise a
               local fallback message is shown.
             </p>
           </section>
@@ -115,7 +115,7 @@ export default function DocsPage() {
 
           <p className="text-slate-500 text-xs border-t border-white/[0.06] pt-8">
             For API keys, CORS, rate limits, and proxies, see{" "}
-            <Link to="/security" className="text-cyan-400 hover:underline">
+            <Link to="/security" className="text-primary hover:underline">
               Security &amp; trust
             </Link>
             . Repository may include <code className="font-mono">SECURITY.md</code> for deployment hardening.

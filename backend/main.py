@@ -24,6 +24,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 
+from auth import authenticate_user, create_access_token
 from config import (
     cors_origins,
     rate_limit_string,
@@ -161,6 +162,7 @@ async def sentinel_auth_middleware(request: Request, call_next):
     p = request.url.path
     public = (
         "/api/health",
+        "/api/auth/login",
         "/docs",
         "/openapi.json",
         "/redoc",
@@ -196,6 +198,16 @@ def favicon():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/api/auth/login")
+async def login(body: dict = Body(...)):
+    username = body.get("username", "")
+    password = body.get("password", "")
+    if not authenticate_user(username, password):
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+    token = create_access_token({"sub": username})
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @app.post("/api/scans", response_model=ScanCreated)

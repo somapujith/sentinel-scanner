@@ -56,7 +56,7 @@ export default function VulnCard({ finding, onExplain }) {
             <button
               type="button"
               onClick={() => onExplain(finding)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-500/25 bg-violet-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200/90 transition hover:border-violet-400/40 hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-red-200/90 transition hover:border-red-400/40 hover:bg-red-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               Explain
@@ -77,7 +77,7 @@ export default function VulnCard({ finding, onExplain }) {
         )}
         {finding.mitigation && (
           <div className="mt-3 border-t border-white/[0.06] pt-3">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-teal-500/90">Remediation</p>
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-primary/85">Remediation</p>
             <p className="text-sm leading-relaxed text-slate-300">{finding.mitigation}</p>
           </div>
         )}

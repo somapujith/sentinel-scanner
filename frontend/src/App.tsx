@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Lenis from 'lenis';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Home } from './pages/Home';
@@ -7,16 +7,19 @@ import { NotFound } from './pages/NotFound';
 import CustomCursor from './components/shared/CustomCursor';
 import ScrollProgressBar from './components/shared/ScrollProgressBar';
 
-import ScannerPage from './pages/ScannerPage.jsx';
+import ScannerDashboardLayout from './pages/ScannerDashboardLayout.jsx';
+import ScannerWorkspace from './pages/ScannerWorkspace.jsx';
+import ScheduledRoute from './pages/ScheduledRoute.jsx';
+import LegacyScanRedirect from './pages/LegacyScanRedirect.jsx';
 import DocsPage from './pages/DocsPage.jsx';
 import SecurityPage from './pages/SecurityPage.jsx';
-import ScheduledPage from './ScheduledPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import ProtectedRoute from './components/shared/ProtectedRoute.jsx';
 
 function isScannerShell(pathname: string) {
-  if (pathname === '/app' || pathname === '/scheduled' || pathname === '/docs' || pathname === '/security') {
-    return true;
-  }
-  return pathname.startsWith('/scan');
+  if (pathname.startsWith('/app')) return true;
+  if (pathname === '/docs' || pathname === '/security') return true;
+  return false;
 }
 
 export default function App() {
@@ -66,9 +69,14 @@ export default function App() {
       <div className={showLandingLoader ? 'h-screen overflow-hidden' : ''}>
         <Routes>
           <Route path="/" element={<Home isLoading={isLoading} />} />
-          <Route path="/app" element={<ScannerPage />} />
-          <Route path="/scan/:scanId" element={<ScannerPage />} />
-          <Route path="/scheduled" element={<ScheduledPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/app" element={<ProtectedRoute><ScannerDashboardLayout /></ProtectedRoute>}>
+            <Route index element={<ScannerWorkspace />} />
+            <Route path="scan/:scanId" element={<ScannerWorkspace />} />
+            <Route path="scheduled" element={<ScheduledRoute />} />
+          </Route>
+          <Route path="/scheduled" element={<Navigate to="/app/scheduled" replace />} />
+          <Route path="/scan/:scanId" element={<LegacyScanRedirect />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="*" element={<NotFound />} />

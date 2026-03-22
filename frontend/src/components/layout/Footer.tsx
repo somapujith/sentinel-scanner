@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Github } from 'lucide-react';
 import { ContactForm } from '../shared/ContactForm';
+import { SentinelLogo } from '../branding/SentinelLogo';
 
 export const Footer: React.FC = () => {
   const navLinks = [
     { label: 'About', href: '#about' },
-    { label: 'Modules', href: '#modules' },
     { label: 'Stack', href: '#team' },
   ];
 
@@ -15,7 +15,7 @@ export const Footer: React.FC = () => {
     { label: 'Scanner', to: '/app' },
     { label: 'Documentation', to: '/docs' },
     { label: 'Security & trust', to: '/security' },
-    { label: 'Scheduled scans', to: '/scheduled' },
+    { label: 'Scheduled scans', to: '/app/scheduled' },
   ];
 
   return (
@@ -51,7 +51,9 @@ export const Footer: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="col-span-1 sm:col-span-2 md:col-span-1"
         >
-          <div className="text-xl font-display text-primary tracking-tighter mb-3">SENTINEL</div>
+          <div className="mb-3">
+            <SentinelLogo variant="lockup" size="sm" />
+          </div>
           <p className="text-[12px] text-white/35 leading-[1.8] max-w-[220px]">
             Sentinel Scanner — lightweight vulnerability posture snapshots. FastAPI backend, React UI, SQLite history.
           </p>
