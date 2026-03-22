@@ -47,6 +47,11 @@ class ExplainRequest(BaseModel):
     target_hint: str = ""
 
 
+class BatchExplainRequest(BaseModel):
+    findings: list[dict[str, Any]]
+    target_hint: str = ""
+
+
 class ExplainResponse(BaseModel):
     explanation: str
     source: str = "local"

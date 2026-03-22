@@ -10,8 +10,35 @@ from dotenv import load_dotenv
 async def explain_finding(finding: dict[str, Any], target_hint: str) -> dict[str, Any]:
     """Return plain-language explanation; prioritizes Gemini, OpenRouter, then OpenAI/Anthropic."""
     # Force reload .env to catch any new user-added keys without server restart
+    from dotenv import load_dotenv
+    import os
     load_dotenv(override=True)
     
+    return await _query_llm(
+        "You are a professional security analyst. In under 180 words, explain this finding to a developer, "
+        "why it matters, and 2 concrete remediation steps. No markdown headings.\n\n"
+        f"Target context: {target_hint or 'unknown'}\n\n"
+        f"Finding JSON: {finding}",
+        fallback_text=_fallback_text(finding, target_hint)
+    )
+
+async def batch_explain_findings(findings: list[dict[str, Any]], target_hint: str) -> dict[str, Any]:
+    from dotenv import load_dotenv
+    import json
+    load_dotenv(override=True)
+    
+    return await _query_llm(
+        "You are a Senior DevSecOps Engineer. The user has requested a batch explanation of "
+        f"{len(findings)} high-severity findings for the target {target_hint or 'unknown'}. "
+        "Write a concise, 3-paragraph executive summary detailing the overarching security posture "
+        "and prioritized remediation steps. Do not explain every single finding individually, "
+        "but summarize the classes of vulnerabilities found and the main risk.\n\n"
+        f"Findings JSON: {json.dumps(findings)}",
+        fallback_text="AI keys not configured. To enable batch executive summaries, please configure GEMINI_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY in the backend .env file."
+    )
+
+async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
+    import os
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
@@ -19,14 +46,6 @@ async def explain_finding(finding: dict[str, Any], target_hint: str) -> dict[str
     
     print(f"DEBUG: Found keys - Gemini: {'Yes' if gemini_key else 'No'}, OpenRouter: {'Yes' if openrouter_key else 'No'}, OpenAI: {'Yes' if openai_key else 'No'}")
     
-    text = _fallback_text(finding, target_hint)
-    prompt = (
-        "You are a professional security analyst. In under 180 words, explain this finding to a developer, "
-        "why it matters, and 2 concrete remediation steps. No markdown headings.\n\n"
-        f"Target context: {target_hint or 'unknown'}\n\n"
-        f"Finding JSON: {finding}"
-    )
-
     # 1. Try Google Gemini (Generous free tier)
     if gemini_key:
         try:

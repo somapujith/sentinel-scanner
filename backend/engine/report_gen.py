@@ -14,7 +14,9 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak, Image
+
+from engine.risk_scorer import aggregate_score
 
 # Brand palette (dark header, accent, risk hues)
 _PRIMARY = colors.HexColor("#0f172a")
@@ -139,21 +141,32 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
     story: list = []
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    # --- Cover band ---
+    # --- Cover Page ---
+    story.append(Spacer(1, 5 * cm))
+    
+    import os
+    logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "logo-sentinel-lockup.png"))
+    if os.path.exists(logo_path):
+        story.append(Image(logo_path, width=8*cm, height=1.6*cm))
+    else:
+        story.append(Paragraph("<b>Sentinel</b><font color='#94a3b8'>Scanner</font>", ParagraphStyle("Logo", parent=title_style, fontSize=42, leading=48, spaceAfter=20)))
+        
+    story.append(Spacer(1, 1 * cm))
+    
     cover_w = A4[0] - 3 * cm
     cover_tbl = Table(
         [
             [
                 Paragraph(
-                    "<b>Vulnerability assessment report</b><br/><font size=9 color='#94a3b8'>"
-                    + escape("Live port, TLS, HTTP header, and reflection checks")
+                    "<b>SECURITY ASSESSMENT REPORT</b><br/><font size=9 color='#94a3b8'>"
+                    + escape("Detailed Vulnerability & Posture Analysis")
                     + "</font>",
                     title_style,
                 )
             ]
         ],
         colWidths=[cover_w],
-        rowHeights=[2.2 * cm],
+        rowHeights=[3.5 * cm],
     )
     cover_tbl.setStyle(
         TableStyle(
@@ -161,18 +174,39 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
                 ("BACKGROUND", (0, 0), (-1, -1), _PRIMARY),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("TOPPADDING", (0, 0), (-1, -1), 16),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
-                ("LEFTPADDING", (0, 0), (-1, -1), 12),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
             ]
         )
     )
     story.append(cover_tbl)
-    story.append(Spacer(1, 0.35 * cm))
-    story.append(Paragraph(f"<i>{escape(now)}</i>", date_style))
-    story.append(Spacer(1, 0.6 * cm))
+    story.append(Spacer(1, 2 * cm))
+    story.append(Paragraph(f"<b>Target:</b> <font color='#1e293b'>{escape(target)}</font>", ParagraphStyle("CoverTarget", parent=body, fontSize=14, alignment=TA_CENTER)))
+    story.append(Paragraph(f"<b>Generated:</b> <font color='#64748b'>{escape(now)}</font>", ParagraphStyle("CoverDate", parent=body, fontSize=12, alignment=TA_CENTER)))
+    story.append(PageBreak())
 
+    # --- Executive Summary ---
+    story.append(Paragraph("<b>EXECUTIVE SUMMARY</b>", h2))
+    story.append(Spacer(1, 0.5 * cm))
+    
+    total_findings = len(findings)
+    crit_high = sum(1 for f in findings if f.get("risk", "").lower() in ("critical", "high"))
+    med_low = total_findings - crit_high
+
+    exec_text = (
+        f"This report presents the findings from an automated security assessment conducted against the "
+        f"target infrastructure at <b>{escape(target)}</b>. The assessment simulated adversarial techniques to identify "
+        f"misconfigurations, vulnerabilities, and information disclosure risks."
+    )
+    story.append(Paragraph(exec_text, body))
+    story.append(Spacer(1, 0.3 * cm))
+    
+    risk_summary = (
+        f"In total, the scanner identified <b>{total_findings}</b> security issues. "
+        f"<b>{crit_high}</b> of these are rated as High or Critical severity and require immediate remediation. "
+        f"The remaining {med_low} findings represent Medium, Low, or Informational issues."
+    )
+    story.append(Paragraph(risk_summary, body))
+    story.append(Spacer(1, 1.5 * cm))
+    
     # --- Metadata card ---
     meta_data = [
         [
@@ -206,22 +240,9 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
     story.append(meta_tbl)
     story.append(Spacer(1, 0.5 * cm))
 
-    agg = (
-        sum(_safe_float(f.get("cvss"), 0.0) for f in findings) / max(len(findings), 1)
-        if findings
-        else 0.0
-    )
-    story.append(Paragraph("<b>Executive summary</b>", h2))
-    story.append(
-        Paragraph(
-            escape(
-                "This report summarizes automated checks run against the target: TCP connectivity to common "
-                "service ports, TLS certificate and protocol review, HTTP security headers, and non-destructive "
-                "reflected-input probes. Risk scores use a simplified CVSS-style weight per finding type."
-            ),
-            body,
-        )
-    )
+    # Calculate actual aggregated risk score using our standard weights
+    agg = aggregate_score(findings) if findings else 0.0
+
     # Match visual rhythm: gap below intro ≈ gap below "Executive summary" heading (~h2 spaceAfter)
     story.append(Spacer(1, 0.5 * cm))
 

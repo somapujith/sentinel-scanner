@@ -1,4 +1,4 @@
-import { useId } from "react";
+import React, { useId } from "react";
 import { Gauge, Loader2 } from "lucide-react";
 import { Card } from "./ui/Card.jsx";
 import { cn } from "../lib/cn.js";
@@ -26,7 +26,38 @@ export default function RiskGauge({ score = 0, label = "Security Score", status 
   const isRunning = status !== "complete" && !status?.startsWith("failed");
 
   // Invert the CVSS risk score (0-10) to a Health Score (0-10) where 10 is safe
-  const healthScore = Math.max(0, 10 - score);
+  const targetHealthScore = Math.max(0, 10 - score);
+  const [animatedScore, setAnimatedScore] = React.useState(0);
+
+  React.useEffect(() => {
+    if (isRunning) {
+      setAnimatedScore(0);
+      return;
+    }
+
+    let rafId;
+    let startTimestamp = null;
+    const duration = 1500; // 1.5 seconds
+
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      
+      // easeOutExpo
+      const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setAnimatedScore(easeProgress * targetHealthScore);
+      
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+    
+    rafId = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [targetHealthScore, isRunning]);
+
+  const healthScore = isRunning ? 0 : animatedScore;
   
   const pct = isRunning ? 30 : Math.min(100, (healthScore / 10) * 100);
   const r = 54;

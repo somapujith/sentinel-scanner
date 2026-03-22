@@ -1,8 +1,25 @@
-import { Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import ScannerSidebar from "../components/ScannerSidebar.jsx";
 import SiteFooter from "../components/layout/SiteFooter.jsx";
 
 export default function ScannerDashboardLayout() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        navigate('/app');
+        setTimeout(() => {
+          document.getElementById('scan-target-input')?.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-black text-slate-300 font-sans antialiased selection:bg-primary/30 selection:text-white">
       {/* Dynamic ambient background */}

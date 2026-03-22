@@ -66,7 +66,10 @@ def _csp_has_frame_ancestors(csp: str) -> bool:
 
 def _analyze_headers(final_url: str, headers: httpx.Headers) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
-    h = {k.lower(): v for k, v in headers.items()}
+    # httpx.Headers can contain multiple identical headers (e.g., Set-Cookie)
+    h_multi = list(headers.multi_items())
+    h = dict(headers.items())  # simpler lookup for single-headers, lowercase keys
+    
     parsed = urlparse(final_url)
     is_https = parsed.scheme == "https"
 
@@ -126,6 +129,77 @@ def _analyze_headers(final_url: str, headers: httpx.Headers) -> list[dict[str, A
                 "description": "Without nosniff, browsers may MIME-sniff responses, increasing risk of content confusion attacks.",
                 "affected_component": final_url,
                 "evidence": h.get("x-content-type-options") or "header absent",
+            }
+        )
+        
+    # Cookie Security Checks
+    for key, value in h_multi:
+        if key.lower() == "set-cookie":
+            parts = [p.strip().lower() for p in value.split(";")]
+            secure = "secure" in parts
+            httponly = "httponly" in parts
+            samesite = any(p.startswith("samesite=") for p in parts)
+            
+            issues = []
+            if not secure and is_https:
+                issues.append("missing Secure flag")
+            if not httponly:
+                issues.append("missing HttpOnly flag")
+            if not samesite:
+                issues.append("missing SameSite attribute")
+                
+            if issues:
+                findings.append(
+                    {
+                        "type": "insecure_cookie",
+                        "title": "Insecure Cookie Settings",
+                        "description": "Cookies were set without recommended security flags, exposing them to theft (XSS/MitM) or CSRF.",
+                        "affected_component": final_url,
+                        "evidence": f"Cookie: {value.split(';')[0]} | Issues: {', '.join(issues)}",
+                    }
+                )
+
+    # Technology Fingerprinting
+    server_hdr = h.get("server", "")
+    if server_hdr:
+        findings.append(
+            {
+                "type": "technology_fingerprint",
+                "title": "Technology Fingerprinting (Server)",
+                "description": "The 'Server' header is disclosing specific technology stacks, which helps attackers target exploits.",
+                "affected_component": final_url,
+                "evidence": f"Server: {server_hdr}",
+            }
+        )
+        
+    x_powered = h.get("x-powered-by", "")
+    if x_powered:
+        findings.append(
+            {
+                "type": "technology_fingerprint",
+                "title": "Technology Fingerprinting (X-Powered-By)",
+                "description": "The 'X-Powered-By' header is exposing the underlying framework (e.g. PHP, Express).",
+                "affected_component": final_url,
+                "evidence": f"X-Powered-By: {x_powered}",
+            }
+        )
+
+    # WAF Detection
+    waf_signatures = ["cloudflare", "incapsula", "x-amzn-waf", "x-sucuri", "imperva"]
+    waf_found = False
+    for k, v in h_multi:
+        if any(w in k.lower() or w in v.lower() for w in waf_signatures):
+            waf_found = True
+            break
+            
+    if waf_found:
+        findings.append(
+            {
+                "type": "info_waf_detected",
+                "title": "Web Application Firewall (WAF) Detected",
+                "description": "A WAF was detected protecting the application. Some exploit payloads may be blocked.",
+                "affected_component": final_url,
+                "evidence": "Observed WAF-specific headers or tokens in the response.",
             }
         )
 

@@ -39,6 +39,7 @@ from engine.risk_scorer import aggregate_score
 from logging_config import setup_logging
 from models import Finding, Scan, ScheduledScan
 from schemas import (
+    BatchExplainRequest,
     ExplainRequest,
     ExplainResponse,
     ScanCreated,
@@ -201,7 +202,8 @@ def health():
 
 
 @app.post("/api/auth/login")
-async def login(body: dict = Body(...)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: dict = Body(...)):
     username = body.get("username", "")
     password = body.get("password", "")
     if not authenticate_user(username, password):
@@ -229,10 +231,24 @@ async def create_scan(
     scan_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     ip = client_ip(request)
+    target_clean = req.target.strip()
+    
     with get_session() as session:
+        # Prevent starting duplicate scans of the exact same target and modules if already running
+        existing = session.scalars(
+            select(Scan).where(Scan.target == target_clean, Scan.status.in_(("queued", "running")))
+        ).all()
+        for ex in existing:
+            try:
+                ex_mods = json.loads(ex.modules_json or "[]")
+            except json.JSONDecodeError:
+                continue
+            if set(ex_mods) == set(modules):
+                return ScanCreated(scan_id=ex.id)
+
         scan = Scan(
             id=scan_id,
-            target=req.target.strip(),
+            target=target_clean,
             status="queued",
             schedule=req.schedule or "once",
             notify_email=req.notify_email,
@@ -263,6 +279,42 @@ def list_scans(limit: int = 50):
             }
             for s in rows
         ]
+
+
+@app.get("/api/scans/history")
+def target_history(target: str, limit: int = 15):
+    """Return historical scores for a target to render a trend chart."""
+    limit = min(max(limit, 1), 50)
+    
+    # Very generous domain matching
+    t_clean = target.replace("https://", "").replace("http://", "").split("/")[0].strip()
+    
+    with get_session() as session:
+        # Get all completed scans for this vaguely matching target
+        rows = session.scalars(
+            select(Scan)
+            .where(Scan.target.ilike(f"%{t_clean}%"))
+            .where(Scan.status == "complete")
+            .order_by(Scan.created_at.asc())
+            .limit(limit)
+        ).all()
+        
+        result = []
+        for r in rows:
+            f_rows = session.scalars(select(Finding).where(Finding.scan_id == r.id)).all()
+            f_dicts = [f.as_dict() for f in f_rows]
+            
+            score = aggregate_score(f_dicts)
+            # Invert CVSS to Health Score (0-10) for easier reading
+            health_score = max(0.0, 10.0 - score)
+            
+            result.append({
+                "scan_id": r.id,
+                "created_at": r.created_at.isoformat(),
+                "health_score": round(health_score, 1)
+            })
+            
+        return result
 
 
 @app.delete("/api/scans/{scan_id}", status_code=204)
@@ -401,6 +453,15 @@ async def scan_events(scan_id: str):
 @app.post("/api/explain", response_model=ExplainResponse)
 async def explain(req: ExplainRequest):
     out = await explain_finding(req.finding, req.target_hint)
+    return ExplainResponse(explanation=out.get("explanation", ""), source=out.get("source", "local"))
+
+
+@app.post("/api/batch-explain", response_model=ExplainResponse)
+async def batch_explain_api(req: BatchExplainRequest):
+    from engine.explain import batch_explain_findings
+    if not req.findings:
+        return ExplainResponse(explanation="No findings provided for batch explanation.", source="local")
+    out = await batch_explain_findings(req.findings[:5], req.target_hint) # Cap at 5 to save tokens
     return ExplainResponse(explanation=out.get("explanation", ""), source=out.get("source", "local"))
 
 

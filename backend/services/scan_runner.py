@@ -12,15 +12,26 @@ from database import get_session
 from engine.risk_scorer import score_findings
 from logging_config import safe_scan_failure_reason
 from models import Finding, Scan, ScheduledScan
-from scanner import header_checker, injection_probe, port_scanner, ssl_checker
+from scanner import (
+    header_checker, 
+    injection_probe, 
+    port_scanner, 
+    ssl_checker,
+    dns_scanner,
+    cors_scanner,
+    subdomain_scanner
+)
 
-ALLOWED_MODULES = frozenset({"port", "header", "ssl", "inject"})
+ALLOWED_MODULES = frozenset({"port", "header", "ssl", "inject", "dns", "cors", "subdomain"})
 
 MODULE_MAP = {
     "port": port_scanner.run,
     "header": header_checker.run,
     "ssl": ssl_checker.run,
     "inject": injection_probe.run,
+    "dns": dns_scanner.run,
+    "cors": cors_scanner.run,
+    "subdomain": subdomain_scanner.run,
 }
 
 
@@ -56,8 +67,22 @@ async def run_scan(scan_id: str, target: str, modules: list[str]) -> None:
             for f in scored:
                 session.add(Finding.from_dict(scan_id, f))
             scan.status = "complete"
+        _fire_webhook(scan_id, target, "complete")
     except Exception as e:  # noqa: BLE001
-        _update_scan(scan_id, status=f"failed:{safe_scan_failure_reason(e)}")
+        status = f"failed:{safe_scan_failure_reason(e)}"
+        _update_scan(scan_id, status=status)
+        _fire_webhook(scan_id, target, status)
+
+def _fire_webhook(scan_id: str, target: str, status: str) -> None:
+    import os
+    import httpx
+    webhook = os.environ.get("WEBHOOK_URL", "").strip()
+    if not webhook:
+        return
+    try:
+        httpx.post(webhook, json={"scan_id": scan_id, "target": target, "status": status}, timeout=5.0)
+    except Exception:
+        pass
 
 
 def schedule_recurring_job(target: str, modules: list[str], schedule: str, notify_email: str | None) -> None:

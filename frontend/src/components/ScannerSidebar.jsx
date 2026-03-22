@@ -88,20 +88,38 @@ export default function ScannerSidebar() {
                 to={`/app/scan/${h.id}`}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition-colors",
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition-colors relative",
                     isActive
                       ? "bg-primary/10 ring-1 ring-primary/25 shadow-[inset_2px_0_0_rgba(220,38,38,0.5)]"
                       : "text-slate-400 hover:bg-white/[0.02] hover:text-slate-200",
                   )
                 }
               >
-                {/* Color-coded health dot */}
-                <span className={cn(
-                  "h-2 w-2 shrink-0 rounded-full",
-                  h.status === "complete" ? "bg-emerald-400" :
-                  h.status?.startsWith("running") ? "bg-blue-400 animate-pulse" :
-                  h.status?.startsWith("failed") ? "bg-rose-500" : "bg-slate-500"
-                )} aria-hidden />
+                {/* Domain Favicon */}
+                {(() => {
+                  let hostname = h.target;
+                  try {
+                    const u = new URL(h.target.startsWith('http') ? h.target : `http://${h.target}`);
+                    hostname = u.hostname;
+                  } catch {}
+                  return (
+                    <div className="relative isolate shrink-0 rounded bg-white/10 p-1 ring-1 ring-white/20 overflow-hidden">
+                      <img 
+                        src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`} 
+                        alt="" 
+                        className="h-4 w-4 drop-shadow object-contain opacity-90"
+                      />
+                      {/* Health dot overlay */}
+                      <span className={cn(
+                        "absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2 ring-black",
+                        h.status === "complete" ? "bg-emerald-400" :
+                        h.status?.startsWith("running") ? "bg-blue-400 animate-[pulse_1s_ease-in-out_infinite]" :
+                        h.status?.startsWith("failed") ? "bg-rose-500" : "bg-slate-500"
+                      )} aria-hidden />
+                    </div>
+                  );
+                })()}
+                
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-mono text-[11px] text-slate-300">{h.target}</div>
                   <div className="mt-0.5 truncate text-[10px] uppercase tracking-wide text-slate-600">{h.status}</div>

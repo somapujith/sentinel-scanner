@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Lenis from 'lenis';
+import { Toaster } from 'sonner';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Home } from './pages/Home';
 import { NotFound } from './pages/NotFound';
@@ -58,11 +59,40 @@ export default function App() {
     };
   }, [scannerMode]);
 
+  // Session Timeout (30 minutes of inactivity)
+  useEffect(() => {
+    let timeoutId: number;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // Automatically log out after 30 minutes
+      timeoutId = window.setTimeout(() => {
+        if (localStorage.getItem('sentinel_token')) {
+          localStorage.removeItem('sentinel_token');
+          window.location.href = '/#/login?expired=true';
+        }
+      }, 30 * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    for (const e of events) {
+      window.addEventListener(e, resetTimer, { passive: true });
+    }
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      for (const e of events) {
+        window.removeEventListener(e, resetTimer);
+      }
+    };
+  }, []);
+
   const showMarketingChrome = !scannerMode;
   const showLandingLoader = location.pathname === '/' && isLoading;
 
   return (
     <>
+      <Toaster theme="dark" position="bottom-right" />
       {showMarketingChrome && <CustomCursor />}
       {showMarketingChrome && <ScrollProgressBar />}
       {showLandingLoader && <LoadingScreen onComplete={() => setIsLoading(false)} />}

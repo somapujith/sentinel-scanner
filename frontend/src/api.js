@@ -56,6 +56,13 @@ export async function postScan(body) {
   return res.json();
 }
 
+export async function getHistory(target) {
+  const q = new URLSearchParams({ target });
+  const res = await fetch(`${base}/api/scans/history?${q}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch history");
+  return res.json();
+}
+
 export async function getScan(scanId) {
   const res = await fetch(`${base}/api/scans/${scanId}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(res.statusText);
@@ -103,6 +110,19 @@ export async function postExplain(finding, targetHint = "") {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ finding, target_hint: targetHint }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(detailMessage(err.detail) || res.statusText);
+  }
+  return res.json();
+}
+
+export async function postBatchExplain(findings, targetHint) {
+  const res = await fetch(`${base}/api/batch-explain`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ findings, target_hint: targetHint }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

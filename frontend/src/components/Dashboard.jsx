@@ -6,13 +6,17 @@ import {
   Inbox,
   ShieldAlert,
   Trash2,
+  Play,
+  Share2,
 } from "lucide-react";
-import { deleteScan, exportScan, getCompare, getScan, listScans, postExplain, scanEventsUrl } from "../api.js";
+import { toast } from "sonner";
+import { deleteScan, exportScan, getCompare, getScan, listScans, postExplain, postBatchExplain, scanEventsUrl } from "../api.js";
 import { cn } from "../lib/cn.js";
 import FindingDrawer from "./FindingDrawer.jsx";
 import ReportDownload from "./ReportDownload.jsx";
 import RiskGauge from "./RiskGauge.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+import TrendChart from "./TrendChart.jsx";
 import VulnCard from "./VulnCard.jsx";
 import { Card } from "./ui/Card.jsx";
 
@@ -51,8 +55,16 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
   const [severityFilter, setSeverityFilter] = useState("all");
 
   const SEVERITY_TABS = ["all", "critical", "high", "medium", "low", "info"];
-  const MODULE_STEPS = ["port", "header", "ssl", "inject"];
-  const MODULE_LABELS = { port: "Ports", header: "Headers", ssl: "TLS/SSL", inject: "Reflection" };
+  const MODULE_STEPS = ["port", "dns", "subdomain", "header", "ssl", "cors", "inject"];
+  const MODULE_LABELS = { 
+    port: "Ports", 
+    dns: "DNS",
+    subdomain: "Subdomains",
+    header: "Headers", 
+    ssl: "TLS/SSL",
+    cors: "CORS",
+    inject: "Reflection" 
+  };
 
   function getModuleStepState(modId, status) {
     if (!status || status === "complete") return "done";
@@ -120,6 +132,11 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
         setScan((prev) => (prev ? { ...prev, status: data.status } : prev));
         const st = data.status || "";
         if (st === "complete" || String(st).startsWith("failed")) {
+          if (st === "complete") {
+            toast.success("Scan complete!");
+          } else {
+            toast.error("Scan failed to complete.");
+          }
           es.close();
           getScan(scanId)
             .then(setScan)
@@ -202,6 +219,26 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
     }
   };
 
+  const handleRescan = async () => {
+    if (!scan) return;
+    try {
+      const { postScan } = await import("../api.js");
+      const res = await postScan({ target: scan.target, modules: scan.modules || [], consent: true });
+      toast.success("Rescan started");
+      window.location.hash = `#/app/${res.scan_id}`;
+    } catch (e) {
+      toast.error(e.message || "Failed to start rescan");
+    }
+  };
+
+  const handleShare = () => {
+    if (!scanId) return;
+    const url = `${window.location.origin}/#/app/${scanId}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success("Link copied to clipboard!"))
+      .catch(() => toast.error("Failed to copy link"));
+  };
+
   const openExplain = (finding) => {
     setExplainFinding(finding);
     setExplainOpen(true);
@@ -214,6 +251,36 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
         setExplainSource(r.source || "local");
       })
       .catch((e) => setExplainErr(e.message || "Explain failed"))
+      .finally(() => setExplainLoading(false));
+  };
+
+  const handleBatchExplain = () => {
+    const findings = scan?.findings || [];
+    const severe = findings.filter(f => (f.risk || "").toLowerCase() === "critical" || (f.risk || "").toLowerCase() === "high").slice(0, 5);
+    
+    if (severe.length === 0) {
+      toast.info("No critical or high findings found to summarize.");
+      return;
+    }
+    
+    setExplainFinding({
+      title: "Batch Executive Summary",
+      type: "batch_summary",
+      risk: "info",
+      cvss: 0,
+      description: `Generating executive summary for ${severe.length} high-severity findings...`
+    });
+    setExplainOpen(true);
+    setExplainText("");
+    setExplainErr("");
+    setExplainLoading(true);
+    
+    postBatchExplain(severe, scan?.target || "")
+      .then((r) => {
+        setExplainText(r.explanation || "");
+        setExplainSource(r.source || "local");
+      })
+      .catch((e) => setExplainErr(e.message || "Batch explain failed"))
       .finally(() => setExplainLoading(false));
   };
 
@@ -328,6 +395,22 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
                     </button>
                     <button
                       type="button"
+                      onClick={handleRescan}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <Play className="h-3.5 w-3.5" aria-hidden />
+                      Re-scan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/25 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:bg-indigo-500/10 transition-colors"
+                    >
+                      <Share2 className="h-3.5 w-3.5" aria-hidden />
+                      Copy Link
+                    </button>
+                    <button
+                      type="button"
                       disabled={deleteBusy}
                       onClick={handleDeleteScan}
                       className="inline-flex items-center gap-1 rounded-lg border border-rose-500/25 px-3 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
@@ -341,12 +424,25 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
             </Card>
 
             <div className="grid gap-6 items-start lg:grid-cols-[minmax(0,260px)_1fr] xl:grid-cols-[minmax(0,280px)_1fr]">
-              <div className="sticky top-6">
+              <div className="sticky top-6 flex flex-col gap-6">
                 <RiskGauge score={scan.aggregate_cvss ?? 0} status={scan.status} />
+                <TrendChart target={scan.target} />
               </div>
               <div className="min-w-0">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold tracking-tight text-white">Findings</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold tracking-tight text-white">Findings</h3>
+                    {complete && (scan?.findings || []).some(f => (f.risk || "").toLowerCase() === "critical" || (f.risk || "").toLowerCase() === "high") && (
+                      <button
+                        type="button"
+                        onClick={handleBatchExplain}
+                        className="inline-flex items-center gap-1.5 rounded bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300 transition-colors hover:bg-blue-500/20 ring-1 ring-blue-500/30"
+                      >
+                        <Activity className="h-3 w-3" />
+                        AI Summary
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {/* Severity filter tabs */}
                     <div className="flex flex-wrap gap-1">
@@ -472,6 +568,19 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
                       <div className="font-mono text-lg text-white">{n ?? "—"}</div>
                     </div>
+                  ))}
+                </div>
+                
+                <div className="mt-8 space-y-4 pt-4 border-t border-white/10">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Detailed Differences</h4>
+                  {compareResult.items_only_right?.map((f, i) => (
+                    <VulnCard key={`new-${i}`} finding={f} defaultExpanded badge="NEW ISSUE" badgeColor="blue" />
+                  ))}
+                  {compareResult.items_only_left?.map((f, i) => (
+                    <VulnCard key={`fixed-${i}`} finding={f} badge="FIXED" badgeColor="green" />
+                  ))}
+                  {compareResult.items_unchanged?.map((f, i) => (
+                    <VulnCard key={`unchanged-${i}`} finding={f} badge="UNCHANGED" />
                   ))}
                 </div>
               </div>

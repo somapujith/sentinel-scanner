@@ -4,11 +4,14 @@ import {
   CalendarClock,
   Crosshair,
   FileSearch,
+  Globe,
+  ListTree,
   Loader2,
   Lock,
   Mail,
   Network,
   Play,
+  Repeat,
   Sparkles,
   Syringe,
 } from "lucide-react";
@@ -21,18 +24,24 @@ const MODULE_ICONS = {
   header: FileSearch,
   ssl: Lock,
   inject: Syringe,
+  dns: Globe,
+  cors: Repeat,
+  subdomain: ListTree,
 };
 
 const MODULES = [
   { id: "port", label: "Port scan", desc: "TCP connect", intrusive: false },
-  { id: "header", label: "HTTP headers", desc: "CSP, HSTS, …", intrusive: false },
+  { id: "header", label: "HTTP headers", desc: "CSP, HSTS, Tech Fingerprint", intrusive: false },
   { id: "ssl", label: "TLS / SSL", desc: "Cert & cipher", intrusive: false },
+  { id: "dns", label: "DNS Security", desc: "SPF, DMARC, Zone", intrusive: false },
+  { id: "cors", label: "CORS Config", desc: "Wildcard, Reflection", intrusive: false },
+  { id: "subdomain", label: "Subdomains", desc: "Common discovery", intrusive: false },
   { id: "inject", label: "Reflection", desc: "XSS / SQLi echo", intrusive: true },
 ];
 
 export default function ScanInput({ onScanStarted }) {
   const [target, setTarget] = useState("");
-  const [modules, setModules] = useState(["port", "header", "ssl", "inject"]);
+  const [modules, setModules] = useState(["port", "header", "ssl", "dns", "cors", "subdomain", "inject"]);
   const [schedule, setSchedule] = useState("once");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -104,17 +113,23 @@ export default function ScanInput({ onScanStarted }) {
           <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Target
           </label>
-          <input
-            className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/40 px-4 font-mono text-sm text-slate-100 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] placeholder:text-slate-600 focus:border-primary/50 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
-            value={target}
-            onChange={(e) => {
-              setTarget(e.target.value);
-              validate(e.target.value);
-            }}
-            placeholder="https://example.com or 203.0.113.10"
-            autoComplete="off"
-            spellCheck={false}
-          />
+          <div className="relative">
+            <input
+              id="scan-target-input"
+              className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/40 pr-16 pl-4 font-mono text-sm text-slate-100 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] placeholder:text-slate-600 focus:border-primary/50 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
+              value={target}
+              onChange={(e) => {
+                setTarget(e.target.value);
+                validate(e.target.value);
+              }}
+              placeholder="https://example.com or 203.0.113.10"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+              <kbd className="hidden sm:inline-block rounded border border-white/10 bg-white/5 px-1.5 font-sans text-[10px] font-medium text-slate-400 opacity-60">Ctrl K</kbd>
+            </div>
+          </div>
           {error && (
             <p className="mt-2 flex items-center gap-2 text-sm text-rose-400">
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />

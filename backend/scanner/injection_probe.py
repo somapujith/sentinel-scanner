@@ -116,4 +116,25 @@ def run(target: str) -> list[dict[str, Any]]:
                 }
             )
 
+        try:
+            r_redirect = client.get(
+                scan_base, 
+                params={"redirect": "http://evil.example.com", "url": "http://evil.example.com", "next": "http://evil.example.com"}, 
+                timeout=TIMEOUT, 
+                follow_redirects=False
+            )
+            loc = r_redirect.headers.get("location", "")
+            if r_redirect.status_code in (301, 302, 303, 307, 308) and "evil.example.com" in loc:
+                findings.append(
+                    {
+                        "type": "open_redirect",
+                        "title": "Open Redirect Vulnerability",
+                        "description": "The application redirects users to an arbitrary external URL passed in via query parameters. This can be abused for phishing attacks.",
+                        "affected_component": str(r_redirect.url),
+                        "evidence": f"Redirected to {loc}",
+                    }
+                )
+        except httpx.RequestError:
+            pass
+
     return findings
