@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Shield, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
+import { SentinelLogo } from "../components/branding/SentinelLogo";
 
 const API = import.meta.env.VITE_API_URL || "";
 
