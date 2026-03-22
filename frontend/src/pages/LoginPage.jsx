@@ -68,10 +68,9 @@ export default function LoginPage() {
       <div className="login-card">
         {/* Logo / Branding */}
         <div className="login-card__header">
-          <div className="login-card__logo">
-            <Shield className="login-card__logo-icon" />
+          <div className="mb-4">
+            <SentinelLogo size="lg" variant="lockup" />
           </div>
-          <h1 className="login-card__title">Sentinel</h1>
           <p className="login-card__subtitle">Security Scanner Platform</p>
         </div>
 

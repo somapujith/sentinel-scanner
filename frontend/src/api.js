@@ -174,3 +174,21 @@ export async function downloadReportBlob(scanId) {
   if (!res.ok) throw new Error(res.statusText);
   return res.blob();
 }
+
+export async function getEpss(cveId) {
+  const res = await fetch(`${base}/api/epss?cve=${encodeURIComponent(cveId)}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+export async function postAttackPath(finding) {
+  const res = await fetch(`${base}/api/attack-path`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(finding),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}

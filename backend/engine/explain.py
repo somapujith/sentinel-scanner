@@ -8,17 +8,26 @@ from dotenv import load_dotenv
 
 
 async def explain_finding(finding: dict[str, Any], target_hint: str) -> dict[str, Any]:
-    """Return plain-language explanation; prioritizes Gemini, OpenRouter, then OpenAI/Anthropic."""
-    # Force reload .env to catch any new user-added keys without server restart
+    """Return structured security analysis; prioritizes Gemini, OpenRouter, then OpenAI/Anthropic."""
     from dotenv import load_dotenv
     import os
     load_dotenv(override=True)
     
+    risk = finding.get("risk", "unknown")
+    ftype = finding.get("type", "issue")
+    title = finding.get("title", ftype)
+    
     return await _query_llm(
-        "You are a professional security analyst. In under 180 words, explain this finding to a developer, "
-        "why it matters, and 2 concrete remediation steps. No markdown headings.\n\n"
-        f"Target context: {target_hint or 'unknown'}\n\n"
-        f"Finding JSON: {finding}",
+        "You are a professional security analyst. Analyze this security finding and respond with EXACTLY these three sections:\n\n"
+        "## Problem\n"
+        "In 2-3 sentences, explain what this vulnerability is, why it exists, and what an attacker could do with it.\n\n"
+        "## Solution\n"
+        "Provide 2-3 concrete, actionable remediation steps a developer can take to fix this.\n\n"
+        "## Best Practices\n"
+        "List 2-3 general security best practices to prevent this class of vulnerability in the future.\n\n"
+        f"Target: {target_hint or 'unknown'}\n"
+        f"Finding: {title} ({ftype}) | Risk: {risk}\n"
+        f"Full data: {finding}",
         fallback_text=_fallback_text(finding, target_hint)
     )
 
@@ -133,7 +142,7 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
             pass
 
     # Final Fallback (Local Summary)
-    return {"explanation": text, "source": "local"}
+    return {"explanation": fallback_text, "source": "local"}
 
 
 def _fallback_text(finding: dict[str, Any], target_hint: str) -> str:

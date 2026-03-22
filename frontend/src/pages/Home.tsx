@@ -6,6 +6,7 @@ import { HeroSection } from '../components/home/HeroSection';
 import { AboutSection } from '../components/home/AboutSection';
 import { TeamSection } from '../components/home/TeamSection';
 import { WhySentinel } from '../components/home/WhySentinel';
+import { AdvancedFeatures } from '../components/home/AdvancedFeatures';
 import { ParticleBackground } from '../components/home/ParticleBackground';
 
 import { NoiseOverlay } from '../components/layout/NoiseOverlay';
@@ -26,6 +27,7 @@ export const Home: React.FC<HomeProps> = ({ isLoading = false }) => {
         <HeroSection />
         <AboutSection />
         <WhySentinel />
+        <AdvancedFeatures />
         <TeamSection />
       </main>
 

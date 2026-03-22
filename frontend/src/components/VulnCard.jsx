@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { AlertOctagon, Sparkles, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AlertOctagon, Sparkles, ChevronDown, GitFork, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { postAttackPath, getEpss } from "../api.js";
 
 const riskConfig = {
   critical: {
@@ -27,8 +28,123 @@ const riskConfig = {
     bar: "bg-blue-500",
     badge: "bg-blue-500/15 text-blue-200 ring-blue-500/25",
     glow: "shadow-[0_0_20px_-4px_rgba(59,130,246,0.2)]",
-  }
+  },
 };
+
+// Attack Path sub-component
+function AttackPath({ finding }) {
+  const [steps, setSteps] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    postAttackPath(finding)
+      .then((d) => setSteps(d.steps || []))
+      .catch(() => setSteps([]))
+      .finally(() => setLoading(false));
+  }, [finding.type]);
+
+  if (loading) return (
+    <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+      <Loader2 className="h-3 w-3 animate-spin" />
+      Building attack path…
+    </div>
+  );
+
+  if (!steps?.length) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <GitFork className="h-3.5 w-3.5 text-primary/80" />
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary/80">Attack Path</span>
+      </div>
+      <div className="relative flex flex-col gap-3 pl-4">
+        {/* Vertical connector line */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-white/[0.06]" />
+
+        {steps.map((step, i) => {
+          const isFirst = i === 0;
+          const isLast = i === steps.length - 1;
+          return (
+            <div key={i} className="relative flex items-start gap-3">
+              <div className={cn(
+                "relative z-10 mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-black",
+                isFirst ? "bg-indigo-500" : isLast ? "bg-rose-500" : "bg-slate-600"
+              )} />
+              <div className="min-w-0 flex-1">
+                <p className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  isFirst ? "text-indigo-400" : isLast ? "text-rose-400" : "text-slate-500"
+                )}>
+                  {step.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{step.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// EPSS sub-component (only shown when finding has a cve_id field)
+function EpssPanel({ cveId }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!cveId) return;
+    setLoading(true);
+    getEpss(cveId)
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [cveId]);
+
+  if (!cveId) return null;
+  if (loading) return (
+    <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+      <Loader2 className="h-3 w-3 animate-spin" />
+      Fetching EPSS score…
+    </div>
+  );
+  if (!data?.epss) return null;
+
+  const epssPercent = (data.epss * 100).toFixed(3);
+  const pctPercent = (data.percentile * 100).toFixed(1);
+  const barWidth = Math.min(data.epss * 100 * 5, 100); // Scale 0-20% EPSS to full bar
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <TrendingUp className="h-3.5 w-3.5 text-blue-400" />
+        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">EPSS Score</span>
+        <span className="ml-auto font-mono text-[10px] text-slate-500">{cveId}</span>
+      </div>
+      <div className="flex items-end gap-4 mb-3">
+        <div>
+          <p className="text-[10px] text-slate-500">Score</p>
+          <p className="font-mono text-lg font-bold text-white">{epssPercent}%</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-500">Percentile</p>
+          <p className="font-mono text-lg font-bold text-white">{pctPercent}%</p>
+        </div>
+        <p className="ml-auto text-[11px] text-slate-500">
+          {data.epss < 0.01 ? "Low" : data.epss < 0.1 ? "Moderate" : "High"} exploitation probability
+        </p>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-700"
+          style={{ width: `${barWidth}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function VulnCard({ finding, onExplain, defaultExpanded = false, badge, badgeColor }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -46,7 +162,7 @@ export default function VulnCard({ finding, onExplain, defaultExpanded = false, 
     >
       <div className={cn("absolute left-0 top-0 h-full w-1 rounded-l-2xl", cfg.bar)} aria-hidden />
       <div className="pl-5 pr-4 py-4">
-        <div 
+        <div
           className="cursor-pointer select-none flex flex-col gap-2"
           onClick={() => setExpanded(!expanded)}
         >
@@ -76,7 +192,7 @@ export default function VulnCard({ finding, onExplain, defaultExpanded = false, 
               <span className="font-mono text-xs text-slate-500">CVSS {Number(finding.cvss ?? 0).toFixed(1)}</span>
               <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-slate-500">{finding.type}</span>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {typeof onExplain === "function" && (
                 <button
@@ -124,6 +240,12 @@ export default function VulnCard({ finding, onExplain, defaultExpanded = false, 
                 <p className="text-sm leading-relaxed text-slate-300">{finding.mitigation}</p>
               </div>
             )}
+
+            {/* Attack Path — auto-generated for all expanded findings */}
+            {expanded && <AttackPath finding={finding} />}
+
+            {/* EPSS Score — only for findings that carry a CVE ID */}
+            {expanded && finding.cve_id && <EpssPanel cveId={finding.cve_id} />}
           </div>
         </div>
       </div>

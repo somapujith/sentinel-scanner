@@ -14,12 +14,12 @@ function LogoImage({
 }) {
   const heightClass =
     variant === 'wordmark'
-      ? 'h-9 max-h-9 w-auto sm:h-10 sm:max-h-10'
+      ? 'h-11 max-h-11 w-auto sm:h-12 sm:max-h-12'
       : size === 'sm'
-        ? 'h-8 max-h-8 w-auto sm:h-9 sm:max-h-9'
+        ? 'h-10 max-h-10 w-auto sm:h-11 sm:max-h-11'
         : size === 'lg'
-          ? 'h-14 max-h-14 w-auto'
-          : 'h-10 max-h-10 w-auto sm:h-11 sm:max-h-11';
+          ? 'h-20 max-h-20 w-auto'
+          : 'h-14 max-h-14 w-auto sm:h-16 sm:max-h-16';
 
   return (
     <img

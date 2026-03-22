@@ -465,6 +465,109 @@ async def batch_explain_api(req: BatchExplainRequest):
     return ExplainResponse(explanation=out.get("explanation", ""), source=out.get("source", "local"))
 
 
+# --- EPSS: Exploit Prediction Scoring System ---
+@app.get("/api/epss")
+async def get_epss(cve: str = Query(..., description="CVE ID e.g. CVE-2021-44228")):
+    """Fetch EPSS score/percentile from api.first.org for a given CVE."""
+    import httpx as _httpx
+    cve_clean = cve.strip().upper()
+    if not cve_clean.startswith("CVE-"):
+        raise HTTPException(status_code=400, detail="Invalid CVE ID format. Use CVE-YYYY-NNNNN.")
+    try:
+        async with _httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                f"https://api.first.org/data/v1/epss?cve={cve_clean}",
+                headers={"Accept": "application/json"},
+            )
+            r.raise_for_status()
+            data = r.json()
+        items = data.get("data", [])
+        if not items:
+            return {"cve": cve_clean, "epss": None, "percentile": None, "message": "CVE not in EPSS database"}
+        item = items[0]
+        return {
+            "cve": cve_clean,
+            "epss": float(item.get("epss", 0)),
+            "percentile": float(item.get("percentile", 0)),
+            "date": item.get("date"),
+        }
+    except _httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"EPSS API error: {e.response.status_code}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"EPSS fetch failed: {str(e)}")
+
+
+# --- Attack Path: Build attack chain from a finding ---
+@app.post("/api/attack-path")
+async def attack_path(finding: dict = Body(...)):
+    """
+    Derive a simplified attack path from a finding dict.
+    Returns a list of steps from entry point to vulnerable sink.
+    """
+    ftype = finding.get("type", "unknown")
+    risk = (finding.get("risk") or "low").lower()
+    component = finding.get("affected_component", "web service")
+    title = finding.get("title", ftype)
+    mitigation = finding.get("mitigation", "")
+
+    # Map finding types to attack chains
+    CHAINS: dict[str, list[dict]] = {
+        "header": [
+            {"label": "Entry Point", "desc": f"Attacker crafts a request targeting {component}"},
+            {"label": "Missing Defence", "desc": f"No protective HTTP header ({title}) present in server response"},
+            {"label": "Browser Exploit", "desc": "Browser executes malicious content or leaks sensitive data"},
+            {"label": "Vulnerable Sink", "desc": f"User's browser / client is compromised. Severity: {risk.upper()}"},
+        ],
+        "ssl": [
+            {"label": "Entry Point", "desc": "Attacker intercepts traffic between client and server (MITM)"},
+            {"label": "Weak Encryption", "desc": f"TLS misconfiguration allows downgrade or eavesdropping ({title})"},
+            {"label": "Data Interception", "desc": "Sensitive data in transit is exposed in cleartext"},
+            {"label": "Vulnerable Sink", "desc": "Credentials, tokens, or PII are exfiltrated"},
+        ],
+        "port": [
+            {"label": "Entry Point", "desc": "Attacker scans the target and finds exposed service"},
+            {"label": "Service Discovery", "desc": f"Open port exposes: {component}"},
+            {"label": "Service Exploit", "desc": "Unpatched service or default credentials allow access"},
+            {"label": "Vulnerable Sink", "desc": f"Full service compromise. Risk: {risk.upper()}"},
+        ],
+        "inject": [
+            {"label": "Entry Point", "desc": f"Attacker sends crafted input to {component}"},
+            {"label": "Insufficient Validation", "desc": f"Server reflects or processes input without sanitization ({title})"},
+            {"label": "Payload Execution", "desc": "Malicious script or query runs in victim's browser or database"},
+            {"label": "Vulnerable Sink", "desc": "Session hijack, data exfiltration, or unauthorized DB access"},
+        ],
+        "cors": [
+            {"label": "Entry Point", "desc": "Attacker hosts malicious site that sends XHR to target"},
+            {"label": "Permissive CORS", "desc": f"Server responds with permissive Access-Control-Allow-Origin ({title})"},
+            {"label": "Cross-origin Read", "desc": "Malicious script reads sensitive response data from target"},
+            {"label": "Vulnerable Sink", "desc": "User's authenticated data leaked to attacker's origin"},
+        ],
+        "dns": [
+            {"label": "Entry Point", "desc": "Attacker queries DNS records for the target"},
+            {"label": "DNS Misconfiguration", "desc": f"{title} — exposed record or missing email security policy"},
+            {"label": "Abuse Vector", "desc": "Zone transfer reveals internal hosts, or email spoofing becomes possible"},
+            {"label": "Vulnerable Sink", "desc": "Internal infrastructure mapped or phishing attacks enabled"},
+        ],
+    }
+
+    # Match chain by finding type prefix
+    chain = None
+    for key, steps in CHAINS.items():
+        if key in ftype.lower():
+            chain = steps
+            break
+
+    if not chain:
+        chain = [
+            {"label": "Entry Point", "desc": f"Attacker targets: {component or 'the application'}"},
+            {"label": "Vulnerability Triggered", "desc": f"{title} ({ftype}) is exploited"},
+            {"label": "Vulnerable Sink", "desc": f"Risk: {risk.upper()}. {mitigation or 'Apply recommended mitigations.'}"},
+        ]
+
+    return {"finding_type": ftype, "risk": risk, "steps": chain}
+
+
+
 @app.get("/api/scans/{scan_id}/report")
 def download_report(scan_id: str):
     with get_session() as session:
