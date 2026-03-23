@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Shield, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 import { SentinelLogo } from "../components/branding/SentinelLogo";
+import { getApiBase, readFetchError } from "../api.js";
 
-const API = import.meta.env.VITE_API_URL || "";
+const API = getApiBase();
 
 export function isAuthenticated() {
   return !!localStorage.getItem("sentinel_token");
@@ -39,15 +40,17 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Invalid credentials");
+        const msg = await readFetchError(res);
+        throw new Error(msg || "Invalid credentials");
       }
       const data = await res.json();
       localStorage.setItem("sentinel_token", data.access_token);
       navigate("/app", { replace: true });
     } catch (err) {
       if (err.message === "Failed to fetch") {
-        setError("Network error: Cannot reach the security engine. Is the backend server running?");
+        setError(
+          "Network error: Cannot reach the API. Check backend URL, or CORS (SENTINEL_CORS_ORIGINS must include this site's origin).",
+        );
       } else {
         setError(err.message || "Login failed. Please try again.");
       }

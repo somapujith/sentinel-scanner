@@ -1,4 +1,52 @@
-const base = import.meta.env.VITE_API_URL || "";
+/**
+ * Default public API used when VITE_API_URL is unset in production builds.
+ * Dev: leave empty so requests go to the Vite `/api` proxy (see vite.config.ts).
+ * Keep in sync with VITE_API_PROXY_TARGET / Railway deployment URL.
+ */
+const DEFAULT_PRODUCTION_API_URL =
+  import.meta.env.VITE_DEFAULT_API_URL || "https://sentinel-scanner-production-6f15.up.railway.app";
+
+/** API origin with no trailing slash. */
+export function getApiBase() {
+  const raw = import.meta.env.VITE_API_URL;
+  const v = typeof raw === "string" ? raw.trim() : "";
+  if (v) return v.replace(/\/$/, "");
+  if (import.meta.env.PROD) return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+  return "";
+}
+
+const base = getApiBase();
+
+/** Normalize FastAPI `detail` (string | array | object) for UI messages. */
+export function formatApiErrorDetail(detail) {
+  if (!detail) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((x) => {
+        const msg = x.msg || x.message || JSON.stringify(x);
+        const loc = Array.isArray(x.loc) ? x.loc.filter((p) => p !== "body").join(".") : "";
+        return loc ? `${loc}: ${msg}` : msg;
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return String(detail);
+}
+
+/** Error text for a failed fetch to the API (handles HTML 404 pages from static hosts). */
+export async function readFetchError(res) {
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    const data = await res.json().catch(() => ({}));
+    const msg = formatApiErrorDetail(data.detail);
+    if (msg) return msg;
+  }
+  if (res.status === 404) {
+    return "API not found on this host. Set VITE_API_URL to your backend URL when building, or use the latest deployment defaults.";
+  }
+  return res.statusText || `Error ${res.status}`;
+}
 
 /** Headers including JWT token from localStorage, or VITE_API_KEY for protected deployments. */
 export function authHeaders(extra = {}) {
@@ -28,19 +76,8 @@ export function scanEventsUrl(scanId) {
 }
 
 function detailMessage(detail) {
-  if (!detail) return "Request failed";
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((x) => {
-        const msg = x.msg || x.message || JSON.stringify(x);
-        const loc = Array.isArray(x.loc) ? x.loc.filter((p) => p !== "body").join(".") : "";
-        return loc ? `${loc}: ${msg}` : msg;
-      })
-      .filter(Boolean)
-      .join("; ");
-  }
-  return String(detail);
+  const s = formatApiErrorDetail(detail);
+  return s || "Request failed";
 }
 
 export async function postScan(body) {
