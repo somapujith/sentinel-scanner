@@ -6,12 +6,29 @@
 const DEFAULT_PRODUCTION_API_URL =
   import.meta.env.VITE_DEFAULT_API_URL || "https://sentinel-scanner-production-6f15.up.railway.app";
 
-/** API origin with no trailing slash. */
+function isBrowserLocalHost() {
+  if (typeof window === "undefined") return true;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+}
+
+/**
+ * API origin with no trailing slash.
+ * - Prefer VITE_API_URL (from .env.production or Vercel build env).
+ * - If unset: when the app runs on a real host (e.g. vercel.app), use the default Railway URL.
+ *   Some hosts/builds do not set import.meta.env.PROD as expected; the hostname check avoids that.
+ * - Local dev (localhost): empty string → same-origin `/api` → Vite proxy.
+ */
 export function getApiBase() {
   const raw = import.meta.env.VITE_API_URL;
   const v = typeof raw === "string" ? raw.trim() : "";
   if (v) return v.replace(/\/$/, "");
-  if (import.meta.env.PROD) return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+  if (typeof window !== "undefined" && !isBrowserLocalHost()) {
+    return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+  }
+  if (import.meta.env.PROD || import.meta.env.MODE === "production") {
+    return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+  }
   return "";
 }
 
