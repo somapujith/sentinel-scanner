@@ -25,4 +25,7 @@ COPY . .
 EXPOSE 8080
 
 # Start command with production-ready uvicorn settings
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+#
+# Railway (and many PaaS) provide the listening port via $PORT.
+# Use it when present, otherwise fall back to 8080 for local/docker usage.
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
