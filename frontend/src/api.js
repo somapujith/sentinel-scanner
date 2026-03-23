@@ -1,38 +1,30 @@
 /**
- * Default public API used when VITE_API_URL is unset in production builds.
- * Dev: leave empty so requests go to the Vite `/api` proxy (see vite.config.ts).
+ * Direct API origin (SSR / tooling only). Browser uses same-origin `/api` — see vercel.json rewrites + Vite proxy.
  * Keep in sync with VITE_API_PROXY_TARGET / Railway deployment URL.
  */
 const DEFAULT_PRODUCTION_API_URL =
   import.meta.env.VITE_DEFAULT_API_URL || "https://sentinel-scanner-production-6f15.up.railway.app";
 
-function isBrowserLocalHost() {
-  if (typeof window === "undefined") return true;
-  const h = window.location.hostname;
-  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
-}
+const RAILWAY_API_ORIGIN = DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
 
 /**
  * API origin with no trailing slash.
- * - Prefer VITE_API_URL (from .env.production or Vercel build env).
- * - If unset: when the app runs on a real host (e.g. vercel.app), use the default Railway URL.
- *   Some hosts/builds do not set import.meta.env.PROD as expected; the hostname check avoids that.
- * - Local dev (localhost): empty string → same-origin `/api` → Vite proxy.
+ * - If VITE_API_URL is set → use it (Netlify, custom setups).
+ * - In the browser with no override → "" so requests hit `/api/...` on the current host (Vite dev proxy or Vercel rewrite).
+ * - Without window (SSR) → Railway URL in production builds.
  */
 export function getApiBase() {
   const raw = import.meta.env.VITE_API_URL;
   const v = typeof raw === "string" ? raw.trim() : "";
   if (v) return v.replace(/\/$/, "");
-  if (typeof window !== "undefined" && !isBrowserLocalHost()) {
-    return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    return "";
   }
   if (import.meta.env.PROD || import.meta.env.MODE === "production") {
-    return DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
+    return RAILWAY_API_ORIGIN;
   }
   return "";
 }
-
-const base = getApiBase();
 
 /** Normalize FastAPI `detail` (string | array | object) for UI messages. */
 export function formatApiErrorDetail(detail) {
@@ -60,7 +52,7 @@ export async function readFetchError(res) {
     if (msg) return msg;
   }
   if (res.status === 404) {
-    return "API not found on this host. Set VITE_API_URL to your backend URL when building, or use the latest deployment defaults.";
+    return "API not found on this host. Deploy vercel.json rewrites (/api → Railway) or set VITE_API_URL at build time.";
   }
   return res.statusText || `Error ${res.status}`;
 }
@@ -84,7 +76,7 @@ export function authHeaders(extra = {}) {
 
 /** URL for SSE. EventSource cannot send headers; `api_key` query is supported by the API when auth is required. */
 export function scanEventsUrl(scanId) {
-  let u = `${base}/api/scans/${encodeURIComponent(scanId)}/events`;
+  let u = `${getApiBase()}/api/scans/${encodeURIComponent(scanId)}/events`;
   const k = import.meta.env.VITE_API_KEY;
   if (k) {
     u += `${u.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(k)}`;
@@ -98,7 +90,7 @@ function detailMessage(detail) {
 }
 
 export async function postScan(body) {
-  const res = await fetch(`${base}/api/scans`, {
+  const res = await fetch(`${getApiBase()}/api/scans`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
@@ -112,25 +104,25 @@ export async function postScan(body) {
 
 export async function getHistory(target) {
   const q = new URLSearchParams({ target });
-  const res = await fetch(`${base}/api/scans/history?${q}`, { headers: authHeaders() });
+  const res = await fetch(`${getApiBase()}/api/scans/history?${q}`, { headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to fetch history");
   return res.json();
 }
 
 export async function getScan(scanId) {
-  const res = await fetch(`${base}/api/scans/${scanId}`, { headers: authHeaders() });
+  const res = await fetch(`${getApiBase()}/api/scans/${scanId}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
 
 export async function listScans() {
-  const res = await fetch(`${base}/api/scans`, { headers: authHeaders() });
+  const res = await fetch(`${getApiBase()}/api/scans`, { headers: authHeaders() });
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
 
 export async function deleteScan(scanId) {
-  const res = await fetch(`${base}/api/scans/${encodeURIComponent(scanId)}`, {
+  const res = await fetch(`${getApiBase()}/api/scans/${encodeURIComponent(scanId)}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
@@ -142,7 +134,7 @@ export async function deleteScan(scanId) {
 
 export async function exportScan(scanId, format) {
   const q = format === "csv" ? "?format=csv" : "?format=json";
-  const res = await fetch(`${base}/api/scans/${encodeURIComponent(scanId)}/export${q}`, {
+  const res = await fetch(`${getApiBase()}/api/scans/${encodeURIComponent(scanId)}/export${q}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(res.statusText);
@@ -151,7 +143,7 @@ export async function exportScan(scanId, format) {
 
 export async function getCompare(leftId, rightId) {
   const q = new URLSearchParams({ left: leftId, right: rightId });
-  const res = await fetch(`${base}/api/scans/compare?${q}`, { headers: authHeaders() });
+  const res = await fetch(`${getApiBase()}/api/scans/compare?${q}`, { headers: authHeaders() });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(detailMessage(err.detail) || res.statusText);
@@ -160,7 +152,7 @@ export async function getCompare(leftId, rightId) {
 }
 
 export async function postExplain(finding, targetHint = "") {
-  const res = await fetch(`${base}/api/explain`, {
+  const res = await fetch(`${getApiBase()}/api/explain`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ finding, target_hint: targetHint }),
@@ -173,7 +165,7 @@ export async function postExplain(finding, targetHint = "") {
 }
 
 export async function postBatchExplain(findings, targetHint) {
-  const res = await fetch(`${base}/api/batch-explain`, {
+  const res = await fetch(`${getApiBase()}/api/batch-explain`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ findings, target_hint: targetHint }),
@@ -186,13 +178,13 @@ export async function postBatchExplain(findings, targetHint) {
 }
 
 export async function listScheduledScans() {
-  const res = await fetch(`${base}/api/scheduled-scans`, { headers: authHeaders() });
+  const res = await fetch(`${getApiBase()}/api/scheduled-scans`, { headers: authHeaders() });
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
 
 export async function patchScheduledScan(jobId, enabled) {
-  const res = await fetch(`${base}/api/scheduled-scans/${encodeURIComponent(jobId)}`, {
+  const res = await fetch(`${getApiBase()}/api/scheduled-scans/${encodeURIComponent(jobId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ enabled }),
@@ -202,7 +194,7 @@ export async function patchScheduledScan(jobId, enabled) {
 }
 
 export async function deleteScheduledScan(jobId) {
-  const res = await fetch(`${base}/api/scheduled-scans/${encodeURIComponent(jobId)}`, {
+  const res = await fetch(`${getApiBase()}/api/scheduled-scans/${encodeURIComponent(jobId)}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
@@ -210,7 +202,7 @@ export async function deleteScheduledScan(jobId) {
 }
 
 export async function runScheduledNow(jobId) {
-  const res = await fetch(`${base}/api/scheduled-scans/${encodeURIComponent(jobId)}/run`, {
+  const res = await fetch(`${getApiBase()}/api/scheduled-scans/${encodeURIComponent(jobId)}/run`, {
     method: "POST",
     headers: authHeaders(),
   });
@@ -222,7 +214,7 @@ export async function runScheduledNow(jobId) {
 }
 
 export async function downloadReportBlob(scanId) {
-  const res = await fetch(`${base}/api/scans/${encodeURIComponent(scanId)}/report`, {
+  const res = await fetch(`${getApiBase()}/api/scans/${encodeURIComponent(scanId)}/report`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(res.statusText);
@@ -230,7 +222,7 @@ export async function downloadReportBlob(scanId) {
 }
 
 export async function getEpss(cveId) {
-  const res = await fetch(`${base}/api/epss?cve=${encodeURIComponent(cveId)}`, {
+  const res = await fetch(`${getApiBase()}/api/epss?cve=${encodeURIComponent(cveId)}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(res.statusText);
@@ -238,7 +230,7 @@ export async function getEpss(cveId) {
 }
 
 export async function postAttackPath(finding) {
-  const res = await fetch(`${base}/api/attack-path`, {
+  const res = await fetch(`${getApiBase()}/api/attack-path`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(finding),
