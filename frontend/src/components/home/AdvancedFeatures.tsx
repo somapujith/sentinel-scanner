@@ -15,68 +15,6 @@ export const AdvancedFeatures: React.FC = () => {
   return (
     <section className="relative w-full bg-[#626de4] py-20 lg:py-32">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 md:px-8">
-        
-        {/* Feature 1: Attack Path */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          className="flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:flex-row"
-        >
-          <div className="flex w-full flex-col justify-center p-10 lg:w-[45%] lg:p-14">
-            <h2 className="mb-8 text-3xl font-bold tracking-tight text-[#5c67db] md:text-4xl">
-              Full Attack Path Visibility
-            </h2>
-            <div className="flex flex-col gap-6">
-              <CheckItem text="Trace vulnerabilities from entry point to impact." />
-              <CheckItem text="Know how attackers move and where to break the chain fast." />
-            </div>
-          </div>
-          <div className="w-full border-t border-slate-100 bg-[#fbfcfd] p-8 lg:w-[55%] lg:border-l lg:border-t-0">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-                <SplitSquareVertical className="h-4 w-4 text-slate-400" />
-                <span className="text-sm font-semibold text-slate-700">Attack Path</span>
-              </div>
-              <div className="flex p-6">
-                <div className="relative mr-8 flex w-24 flex-col items-center pt-2">
-                  <div className="absolute top-4 bottom-4 w-0.5 bg-indigo-100"></div>
-                  <div className="relative z-10 mb-8 flex flex-col items-center">
-                    <div className="h-3 w-3 rounded-full bg-indigo-500 ring-4 ring-indigo-50"></div>
-                    <span className="mt-2 text-[10px] font-bold text-indigo-600">Entry Point</span>
-                  </div>
-                  <div className="relative z-10 mb-8 flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full border-2 border-slate-300 bg-white"></div>
-                    <span className="mt-2 text-[10px] font-semibold text-slate-400">Step 1</span>
-                  </div>
-                  <div className="relative z-10 mb-8 flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full border-2 border-slate-300 bg-white"></div>
-                    <span className="mt-2 text-[10px] font-semibold text-slate-400">Step 2</span>
-                  </div>
-                  <div className="relative z-10 flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full border-2 border-slate-300 bg-white"></div>
-                    <span className="mt-2 text-[10px] font-semibold text-slate-400">Step 3</span>
-                  </div>
-                </div>
-                <div className="flex-1 rounded-xl border border-indigo-100 bg-indigo-50/30 p-5 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-slate-800">Entry Point</h4>
-                    <span className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">1 of 6</span>
-                  </div>
-                  <p className="mb-1 text-[11px] font-semibold text-slate-500">Location:</p>
-                  <div className="mb-4 rounded bg-slate-100 px-3 py-2 font-mono text-[10px] text-slate-700">
-                    Sast/Fixing/codebase/big_project_go/croc-main/src/notify.go:65-67
-                  </div>
-                  <p className="mb-1 text-[11px] font-semibold text-slate-500">Description:</p>
-                  <p className="text-[12px] leading-relaxed text-slate-700">
-                    Untrusted HTTP connections from the network are accepted by the HTTP server and handled by net/http.
-                    An attacker can open many connections and deliberately send incomplete HTTP requests to keep connections open and exhaust server resources.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Feature 2: EPSS */}
         <motion.div
