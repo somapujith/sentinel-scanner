@@ -15,6 +15,7 @@ import LegacyScanRedirect from './pages/LegacyScanRedirect.jsx';
 import DocsPage from './pages/DocsPage.jsx';
 import SecurityPage from './pages/SecurityPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
 import ProtectedRoute from './components/shared/ProtectedRoute.jsx';
 
 function isScannerShell(pathname: string) {
@@ -100,6 +101,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home isLoading={isLoading} />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/app" element={<ProtectedRoute><ScannerDashboardLayout /></ProtectedRoute>}>
             <Route index element={<ScannerWorkspace />} />
             <Route path="scan/:scanId" element={<ScannerWorkspace />} />

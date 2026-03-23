@@ -6,6 +6,10 @@ from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
+
+from database import get_session
+from models import User
 
 SECRET_KEY = os.environ.get("SENTINEL_JWT_SECRET", "sentinel-change-me-in-production-secret")
 ALGORITHM = "HS256"
@@ -38,12 +42,41 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
 
 
 def authenticate_user(username: str, password: str) -> bool:
+    uname = (username or "").strip()
+    pwd = password or ""
+
+    # Prefer DB users (registered users).
+    with get_session() as session:
+        user = session.scalar(select(User).where(User.username == uname))
+        if user and verify_password(pwd, user.password_hash):
+            return True
+
+    # Fallback to ENV admin credentials.
     admin_user, admin_pass = get_admin_credentials()
-    # Bypass logic: allow both ENV variables AND hardcoded defaults as a fallback
-    if (username == admin_user and verify_password(password, admin_pass)) or \
-       (username == "admin" and password == "sentinel123"):
+    if (uname == admin_user and verify_password(pwd, admin_pass)) or \
+       (uname == "admin" and pwd == "sentinel123"):
         return True
     return False
+
+
+def create_user(username: str, password: str) -> None:
+    uname = (username or "").strip()
+    pwd = password or ""
+    if len(uname) < 3 or len(uname) > 64:
+        raise ValueError("Username must be between 3 and 64 characters.")
+    if len(pwd) < 6:
+        raise ValueError("Password must be at least 6 characters.")
+
+    with get_session() as session:
+        existing = session.scalar(select(User).where(User.username == uname))
+        if existing:
+            raise ValueError("Username already exists.")
+        session.add(
+            User(
+                username=uname,
+                password_hash=pwd_context.hash(pwd),
+            )
+        )
 
 
 def create_access_token(data: dict) -> str:

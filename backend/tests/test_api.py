@@ -67,3 +67,31 @@ def test_create_scan_with_consent(client):
 
     g = client.get(f"/api/scans/{sid}")
     assert g.status_code == 404
+
+
+def test_register_and_login(client):
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "alice", "password": "strongpass123"},
+    )
+    assert r.status_code == 200
+    assert r.json().get("access_token")
+
+    dup = client.post(
+        "/api/auth/register",
+        json={"username": "alice", "password": "anotherpass"},
+    )
+    assert dup.status_code == 400
+
+    ok = client.post(
+        "/api/auth/login",
+        json={"username": "alice", "password": "strongpass123"},
+    )
+    assert ok.status_code == 200
+    assert ok.json().get("access_token")
+
+    bad = client.post(
+        "/api/auth/login",
+        json={"username": "alice", "password": "wrongpass"},
+    )
+    assert bad.status_code == 401

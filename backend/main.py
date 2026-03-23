@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 
-from auth import authenticate_user, create_access_token
+from auth import authenticate_user, create_access_token, create_user
 from config import (
     cors_origins,
     rate_limit_string,
@@ -39,6 +39,7 @@ from engine.risk_scorer import aggregate_score
 from logging_config import setup_logging
 from models import Finding, Scan, ScheduledScan
 from schemas import (
+    AuthRequest,
     BatchExplainRequest,
     ExplainRequest,
     ExplainResponse,
@@ -164,6 +165,7 @@ async def sentinel_auth_middleware(request: Request, call_next):
     public = (
         "/api/health",
         "/api/auth/login",
+        "/api/auth/register",
         "/docs",
         "/openapi.json",
         "/redoc",
@@ -203,12 +205,23 @@ def health():
 
 @app.post("/api/auth/login")
 @limiter.limit("5/minute")
-async def login(request: Request, body: dict = Body(...)):
-    username = body.get("username", "")
-    password = body.get("password", "")
+async def login(request: Request, body: AuthRequest):
+    username = body.username
+    password = body.password
     if not authenticate_user(username, password):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
     token = create_access_token({"sub": username})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.post("/api/auth/register")
+@limiter.limit("5/minute")
+async def register(request: Request, body: AuthRequest):
+    try:
+        create_user(body.username, body.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    token = create_access_token({"sub": body.username.strip()})
     return {"access_token": token, "token_type": "bearer"}
 
 

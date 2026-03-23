@@ -38,11 +38,24 @@ def migrate_sqlite() -> None:
             alters.append("ALTER TABLE scans ADD COLUMN consent_ip VARCHAR(64)")
         for stmt in alters:
             conn.execute(text(stmt))
+        # Ensure users table exists for auth registration/login.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    id VARCHAR(36) PRIMARY KEY,
+                    username VARCHAR(64) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP
+                )
+                """
+            )
+        )
         conn.commit()
 
 
 def init_db() -> None:
-    from models import Finding, Scan, ScheduledScan  # noqa: F401
+    from models import Finding, Scan, ScheduledScan, User  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     migrate_sqlite()

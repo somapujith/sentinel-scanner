@@ -1,24 +1,12 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { Shield, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, AlertTriangle, UserPlus } from "lucide-react";
 import { SentinelLogo } from "../components/branding/SentinelLogo";
+import { isAuthenticated } from "./LoginPage.jsx";
 
 const API = import.meta.env.VITE_API_URL || "";
 
-export function isAuthenticated() {
-  return !!localStorage.getItem("sentinel_token");
-}
-
-export function getToken() {
-  return localStorage.getItem("sentinel_token");
-}
-
-export function logout() {
-  localStorage.removeItem("sentinel_token");
-  window.location.href = "/login";
-}
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -33,14 +21,14 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/auth/login`, {
+      const res = await fetch(`${API}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Invalid credentials");
+        throw new Error(data.detail || "Registration failed");
       }
       const data = await res.json();
       localStorage.setItem("sentinel_token", data.access_token);
@@ -49,7 +37,7 @@ export default function LoginPage() {
       if (err.message === "Failed to fetch") {
         setError("Network error: Cannot reach the security engine. Is the backend server running?");
       } else {
-        setError(err.message || "Login failed. Please try again.");
+        setError(err.message || "Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -58,7 +46,6 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* Ambient background layers */}
       <div className="login-bg" aria-hidden>
         <div className="login-bg__blob login-bg__blob--1" />
         <div className="login-bg__blob login-bg__blob--2" />
@@ -67,15 +54,13 @@ export default function LoginPage() {
       </div>
 
       <div className="login-card">
-        {/* Logo / Branding */}
         <div className="login-card__header">
           <div className="mb-4">
             <SentinelLogo size="lg" variant="lockup" />
           </div>
-          <p className="login-card__subtitle">Security Scanner Platform</p>
+          <p className="login-card__subtitle">Create Scanner Account</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="login-card__form">
           <div className="login-field">
             <label htmlFor="username" className="login-field__label">Username</label>
@@ -85,8 +70,9 @@ export default function LoginPage() {
               autoComplete="username"
               autoFocus
               required
+              minLength={3}
               className="login-field__input"
-              placeholder="admin"
+              placeholder="new user"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
@@ -98,10 +84,11 @@ export default function LoginPage() {
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
+                minLength={6}
                 className="login-field__input login-field__input--with-icon"
-                placeholder="••••••••"
+                placeholder="At least 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -125,17 +112,17 @@ export default function LoginPage() {
 
           <button type="submit" disabled={loading} className="login-btn">
             {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /><span>Authenticating...</span></>
+              <><Loader2 className="h-4 w-4 animate-spin" /><span>Creating account...</span></>
             ) : (
-              <><Shield className="h-4 w-4" /><span>Access Scanner</span></>
+              <><UserPlus className="h-4 w-4" /><span>Create Account</span></>
             )}
           </button>
         </form>
 
         <p className="login-card__hint">
-          No account yet?{" "}
-          <Link to="/register" className="text-primary hover:underline">
-            Create one
+          Already have an account?{" "}
+          <Link to="/login" className="text-primary hover:underline">
+            Sign in
           </Link>
         </p>
       </div>
