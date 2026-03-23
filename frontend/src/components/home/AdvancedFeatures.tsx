@@ -12,15 +12,7 @@ const CheckItem = ({ text }: { text: string }) => (
 );
 
 export const AdvancedFeatures: React.FC = () => {
-  return (
-    <section className="relative w-full bg-[#626de4] py-20 lg:py-32">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 md:px-8">
-        {/*
-         * Removed feature cards per request.
-         * Keeping section wrapper so the background styling remains consistent.
-         */}
-
-      </div>
-    </section>
-  );
+  // No feature cards are currently enabled, so return nothing to avoid
+  // leaving an empty padded section (which causes visible blank space).
+  return null;
 };
