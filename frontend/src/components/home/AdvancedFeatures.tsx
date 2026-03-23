@@ -15,58 +15,6 @@ export const AdvancedFeatures: React.FC = () => {
   return (
     <section className="relative w-full bg-[#626de4] py-20 lg:py-32">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 md:px-8">
-
-        {/* Feature 2: EPSS */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          className="flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:flex-row"
-        >
-          <div className="flex w-full flex-col justify-center p-10 lg:w-[45%] lg:p-14">
-            <h2 className="mb-8 text-3xl font-bold tracking-tight text-[#5c67db] md:text-4xl">
-              Issue Insight with EPSS & Severity
-            </h2>
-            <div className="flex flex-col gap-6">
-              <CheckItem text="See severity, exploit likelihood, and impact at a glance." />
-              <CheckItem text="Prioritise fixes based on real-world exploit probability." />
-            </div>
-          </div>
-          <div className="w-full border-t border-slate-100 bg-[#fbfcfd] p-8 lg:w-[55%] lg:border-l lg:border-t-0">
-             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-slate-800">EPSS Historical Trend (30 Days)</h3>
-                <div className="mt-2 flex flex-col gap-1 text-[12px] text-slate-600">
-                  <p>Latest EPSS Score: <span className="font-semibold text-slate-800">0.123%</span></p>
-                  <p>Latest EPSS %ile: <span className="font-semibold text-slate-800">0.323%</span></p>
-                  <p className="mt-1 text-slate-500">Low exploitation probability in the next 30 days</p>
-                </div>
-                <div className="mt-8 h-48 w-full">
-                  <svg viewBox="0 0 400 150" className="h-full w-full overflow-visible">
-                    {/* Grid */}
-                    <path d="M 40 10 L 40 130" stroke="#f1f5f9" strokeWidth="1" />
-                    <path d="M 40 130 L 380 130" stroke="#e2e8f0" strokeWidth="2" />
-                    <path d="M 40 100 L 380 100" stroke="#f1f5f9" strokeWidth="1" />
-                    <path d="M 40 70 L 380 70" stroke="#f1f5f9" strokeWidth="1" />
-                    <path d="M 40 40 L 380 40" stroke="#f1f5f9" strokeWidth="1" />
-                    {/* Lines */}
-                    <path d="M 50 120 L 220 120 L 240 80 L 320 80 L 340 30 L 370 30" fill="none" stroke="#3b82f6" strokeWidth="3" />
-                    <path d="M 50 125 L 220 125 L 240 90 L 320 90 L 340 20 L 370 20" fill="none" stroke="#22c55e" strokeWidth="3" />
-                    {/* Dots */}
-                    <circle cx="370" cy="30" r="4" fill="#3b82f6" />
-                    <circle cx="370" cy="20" r="4" fill="#22c55e" />
-                  </svg>
-                  <div className="mt-2 flex justify-between px-10 text-[9px] text-slate-400">
-                    <span>Sep 28</span>
-                    <span>Oct 4</span>
-                    <span>Oct 12</span>
-                    <span>Oct 20</span>
-                    <span>Oct 28</span>
-                  </div>
-                </div>
-             </div>
-          </div>
-        </motion.div>
-
         {/* Feature 3: AI Fix */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
