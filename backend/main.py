@@ -18,13 +18,12 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 
-from auth import authenticate_user, create_access_token, create_user
 from config import (
     cors_origins,
     rate_limit_string,
@@ -39,7 +38,6 @@ from engine.risk_scorer import aggregate_score
 from logging_config import setup_logging
 from models import Finding, Scan, ScheduledScan
 from schemas import (
-    AuthRequest,
     BatchExplainRequest,
     ExplainRequest,
     ExplainResponse,
@@ -49,7 +47,7 @@ from schemas import (
     ScheduledScanOut,
     ScheduledScanPatch,
 )
-from security import auth_ok, client_ip, rate_limit_key
+from security import client_ip, rate_limit_key
 from services.scan_runner import (
     ALLOWED_MODULES,
     enqueue_scan_from_schedule_job,
@@ -159,26 +157,10 @@ app.add_middleware(
 
 @app.middleware("http")
 async def sentinel_auth_middleware(request: Request, call_next):
+    # Authentication has been fully disabled for this deployment.
+    # Keep the middleware to ensure CORS preflight (`OPTIONS`) behaves consistently.
     if request.method == "OPTIONS":
         return await call_next(request)
-    p = request.url.path
-    public = (
-        "/api/health",
-        "/api/auth/login",
-        "/api/auth/register",
-        "/docs",
-        "/openapi.json",
-        "/redoc",
-        "/",
-        "/favicon.ico",
-    )
-    if p in public or not p.startswith("/api"):
-        return await call_next(request)
-    if not auth_ok(request):
-        return JSONResponse(
-            {"detail": "Valid API key required (X-API-Key or Authorization: Bearer)."},
-            status_code=401,
-        )
     return await call_next(request)
 
 
@@ -201,28 +183,6 @@ def favicon():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-
-@app.post("/api/auth/login")
-@limiter.limit("5/minute")
-async def login(request: Request, body: AuthRequest):
-    username = body.username
-    password = body.password
-    if not authenticate_user(username, password):
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
-    token = create_access_token({"sub": username})
-    return {"access_token": token, "token_type": "bearer"}
-
-
-@app.post("/api/auth/register")
-@limiter.limit("5/minute")
-async def register(request: Request, body: AuthRequest):
-    try:
-        create_user(body.username, body.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    token = create_access_token({"sub": body.username.strip()})
-    return {"access_token": token, "token_type": "bearer"}
 
 
 @app.post("/api/scans", response_model=ScanCreated)

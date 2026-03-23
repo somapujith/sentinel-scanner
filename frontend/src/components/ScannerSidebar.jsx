@@ -11,7 +11,6 @@ import {
 import { SentinelLogo } from "./branding/SentinelLogo";
 import { listScans } from "../api.js";
 import { cn } from "../lib/cn.js";
-import { logout } from "../pages/LoginPage.jsx";
 
 const navBtn =
   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors";
@@ -35,7 +34,7 @@ export default function ScannerSidebar() {
         <SentinelLogo variant="lockup" to="/app" />
         <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
           Ports, TLS, headers, probes — scored &amp; exportable.{" "}
-          <span className="font-semibold uppercase tracking-wide text-slate-600">Authorized only</span>
+          <span className="font-semibold uppercase tracking-wide text-slate-600">Open access</span>
         </p>
       </div>
 
@@ -137,17 +136,7 @@ export default function ScannerSidebar() {
         )}
       </div>
 
-      {/* Logout button at the very bottom of the sidebar */}
-      <div className="border-t border-white/[0.04] px-3 py-3">
-        <button
-          type="button"
-          onClick={logout}
-          className={cn(navBtn, "w-full text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-colors")}
-        >
-          <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-          Sign out
-        </button>
-      </div>
+      {/* Authentication removed — no logout action. */}
     </aside>
   );
 }

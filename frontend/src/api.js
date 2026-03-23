@@ -57,31 +57,14 @@ export async function readFetchError(res) {
   return res.statusText || `Error ${res.status}`;
 }
 
-/** Headers including JWT token from localStorage, or VITE_API_KEY for protected deployments. */
+/** No auth headers are required (authentication disabled). */
 export function authHeaders(extra = {}) {
-  const h = { ...extra };
-  // Prefer JWT token from login session
-  const jwt = localStorage.getItem("sentinel_token");
-  if (jwt && !h["Authorization"]) {
-    h["Authorization"] = `Bearer ${jwt}`;
-  } else {
-    // Fallback to static API key for deployments that use VITE_API_KEY
-    const k = import.meta.env.VITE_API_KEY;
-    if (k && !h["X-API-Key"] && !h.Authorization) {
-      h["X-API-Key"] = k;
-    }
-  }
-  return h;
+  return { ...extra };
 }
 
-/** URL for SSE. EventSource cannot send headers; `api_key` query is supported by the API when auth is required. */
+/** URL for SSE. */
 export function scanEventsUrl(scanId) {
-  let u = `${getApiBase()}/api/scans/${encodeURIComponent(scanId)}/events`;
-  const k = import.meta.env.VITE_API_KEY;
-  if (k) {
-    u += `${u.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(k)}`;
-  }
-  return u;
+  return `${getApiBase()}/api/scans/${encodeURIComponent(scanId)}/events`;
 }
 
 function detailMessage(detail) {
