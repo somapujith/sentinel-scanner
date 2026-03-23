@@ -13,4 +13,6 @@ slowapi==0.1.9
 pytest==8.3.4
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+# bcrypt 5.x breaks passlib 1.7.4 (hash errors / __about__ removed); keep 4.x until passlib is updated.
+bcrypt>=4.0.1,<5
 dnspython>=2.6.0
