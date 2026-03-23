@@ -15,15 +15,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_admin_credentials() -> tuple[str, str]:
-    username = os.environ.get("SENTINEL_USERNAME", "admin")
-    password = os.environ.get("SENTINEL_PASSWORD", "sentinel")
+    username = (os.environ.get("SENTINEL_USERNAME", "admin") or "admin").strip()
+    password = (os.environ.get("SENTINEL_PASSWORD", "sentinel") or "sentinel").strip()
     return username, password
 
 
 def verify_password(plain_password: str, stored_password: str) -> bool:
     """Support both bcrypt hashed passwords and plain-text passwords in .env."""
-    # Optimization: If it doesn't look like a hash, don't waste time with passlib identification
-    if not (stored_password.startswith("$2b$") or stored_password.startswith("$2a$")):
+    # Common bcrypt prefixes: $2a$, $2b$, $2y$.
+    # If it doesn't look like a hash, compare as plain text.
+    if not (
+        stored_password.startswith("$2a$")
+        or stored_password.startswith("$2b$")
+        or stored_password.startswith("$2y$")
+    ):
         return plain_password == stored_password
 
     try:
