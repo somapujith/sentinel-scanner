@@ -1,21 +1,17 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
-
-const api = process.env.VITE_API_PROXY_TARGET || 'https://sentinel-scanner-production-6f15.up.railway.app';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  // Local dev should default to the local backend. Docker/CI can override via VITE_API_PROXY_TARGET.
+  const api = (env.VITE_API_PROXY_TARGET || '').trim() || 'http://127.0.0.1:8000';
   return {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src'),
-      },
       dedupe: ['react', 'react-dom'],
     },
     optimizeDeps: {

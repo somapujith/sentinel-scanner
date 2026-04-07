@@ -1,29 +1,15 @@
 /**
- * Direct API origin (SSR / tooling only). Browser uses same-origin `/api` — see vercel.json rewrites + Vite proxy.
- * Keep in sync with VITE_API_PROXY_TARGET / Railway deployment URL.
- */
-const DEFAULT_PRODUCTION_API_URL =
-  import.meta.env.VITE_DEFAULT_API_URL || "https://sentinel-scanner-production-6f15.up.railway.app";
-
-const RAILWAY_API_ORIGIN = DEFAULT_PRODUCTION_API_URL.replace(/\/$/, "");
-
-/**
  * API origin with no trailing slash.
- * - If VITE_API_URL is set → use it (Netlify, custom setups).
- * - In the browser with no override → "" so requests hit `/api/...` on the current host (Vite dev proxy or Vercel rewrite).
- * - Without window (SSR) → Railway URL in production builds.
+ *
+ * Default: "" so browser requests hit `/api/...` on the current host
+ * (Vite dev proxy locally).
+ *
+ * Override: set VITE_API_URL to call a different backend origin.
  */
 export function getApiBase() {
   const raw = import.meta.env.VITE_API_URL;
   const v = typeof raw === "string" ? raw.trim() : "";
-  if (v) return v.replace(/\/$/, "");
-  if (typeof window !== "undefined") {
-    return "";
-  }
-  if (import.meta.env.PROD || import.meta.env.MODE === "production") {
-    return RAILWAY_API_ORIGIN;
-  }
-  return "";
+  return v ? v.replace(/\/$/, "") : "";
 }
 
 /** Normalize FastAPI `detail` (string | array | object) for UI messages. */
@@ -52,7 +38,7 @@ export async function readFetchError(res) {
     if (msg) return msg;
   }
   if (res.status === 404) {
-    return "API not found on this host. Deploy vercel.json rewrites (/api → Railway) or set VITE_API_URL at build time.";
+    return "API not found on this host. Ensure the backend is running and the dev proxy is configured, or set VITE_API_URL.";
   }
   return res.statusText || `Error ${res.status}`;
 }

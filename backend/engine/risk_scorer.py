@@ -92,6 +92,15 @@ def aggregate_score(findings: list[dict[str, Any]]) -> float:
     )
 
 
+def security_score(findings: list[dict[str, Any]]) -> float:
+    """Return a 0–10 health/security score where 10 is best.
+
+    The UI presents an inverted score (10 - aggregate CVSS) so that higher is safer.
+    The PDF report should use the same system.
+    """
+    return max(0.0, 10.0 - aggregate_score(findings))
+
+
 def get_mitigation(vuln_type: str) -> str:
     tips = {
         "sql_injection": "Use parameterised queries and ORM layers; never concatenate user input into SQL. Validate and encode all output.",

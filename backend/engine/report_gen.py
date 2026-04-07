@@ -16,7 +16,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak, Image
 
-from engine.risk_scorer import aggregate_score
+from engine import risk_scorer
 
 # Brand palette (dark header, accent, risk hues)
 _PRIMARY = colors.HexColor("#0f172a")
@@ -240,8 +240,8 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
     story.append(meta_tbl)
     story.append(Spacer(1, 0.5 * cm))
 
-    # Calculate actual aggregated risk score using our standard weights
-    agg = aggregate_score(findings) if findings else 0.0
+    # Use the same scoring system as the UI: 0–10 where 10 is best.
+    score = risk_scorer.security_score(findings)
 
     # Match visual rhythm: gap below intro ≈ gap below "Executive summary" heading (~h2 spaceAfter)
     story.append(Spacer(1, 0.5 * cm))
@@ -250,12 +250,12 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
     gauge_tbl = Table(
         [
             [
-                Paragraph("Mean weighted score", gauge_lbl),
+                Paragraph("Security score", gauge_lbl),
                 Paragraph("Risk distribution", gauge_lbl),
             ],
             [
                 Paragraph(
-                    f"<font size=17 color='#0ea5e9'><b>{agg:.2f}</b></font> "
+                    f"<font size=17 color='#0ea5e9'><b>{score:.2f}</b></font> "
                     f"<font size=10 color='#64748b'>/ 10</font>",
                     gauge_val,
                 ),
