@@ -8,9 +8,6 @@ export default defineConfig(({ mode }) => {
   const api = (env.VITE_API_PROXY_TARGET || '').trim() || 'http://127.0.0.1:8000';
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       dedupe: ['react', 'react-dom'],
     },

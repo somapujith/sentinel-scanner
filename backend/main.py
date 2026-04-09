@@ -144,14 +144,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Sentinel Scanner API", version="0.3.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(
+    SlowAPIMiddleware
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 
@@ -262,11 +264,14 @@ def target_history(target: str, limit: int = 15):
     # Very generous domain matching
     t_clean = target.replace("https://", "").replace("http://", "").split("/")[0].strip()
     
+    # Escape ORM wildcards
+    t_clean = t_clean.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    
     with get_session() as session:
         # Get all completed scans for this vaguely matching target
         rows = session.scalars(
             select(Scan)
-            .where(Scan.target.ilike(f"%{t_clean}%"))
+            .where(Scan.target.ilike(f"%{t_clean}%", escape="\\"))
             .where(Scan.status == "complete")
             .order_by(Scan.created_at.asc())
             .limit(limit)

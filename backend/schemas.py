@@ -7,10 +7,16 @@ from pydantic import BaseModel, Field
 
 
 class ScanRequest(BaseModel):
-    target: str = Field(..., min_length=1, max_length=2048)
-    modules: list[str] = Field(default_factory=list)
-    schedule: str = "once"
-    notify_email: Optional[str] = None
+    target: str = Field(
+        ...,
+        min_length=3,
+        max_length=255,
+        pattern=r"^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[a-zA-Z0-9_-.-]*)*$|^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$",
+        description="A valid domain name or IPv4 address."
+    )
+    modules: list[str] = Field(default_factory=list, max_length=20)
+    schedule: str = Field("once", max_length=50)
+    notify_email: Optional[str] = Field(None, pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", max_length=255)
     consent: bool = False
 
 
