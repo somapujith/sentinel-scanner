@@ -152,7 +152,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
@@ -167,6 +167,7 @@ async def sentinel_auth_middleware(request: Request, call_next):
 
 
 @app.get("/", include_in_schema=False)
+@app.head("/", include_in_schema=False)
 def root():
     return {
         "service": "Sentinel Scanner API",
@@ -183,6 +184,7 @@ def favicon():
 
 
 @app.get("/api/health")
+@app.head("/api/health")
 def health():
     return {"status": "ok"}
 
