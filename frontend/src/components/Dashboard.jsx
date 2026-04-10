@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import {
   Activity,
   FileJson2,
@@ -20,6 +20,90 @@ import TrendChart from "./TrendChart.jsx";
 import VulnCard from "./VulnCard.jsx";
 import { Card } from "./ui/Card.jsx";
 
+const initialState = {
+  scan: null,
+  history: [],
+  err: "",
+  severityFilter: "all",
+  exportBusy: false,
+  deleteBusy: false,
+  
+  // Compare State
+  compareLeft: "",
+  compareRight: "",
+  compareResult: null,
+  compareErr: "",
+  compareLoading: false,
+
+  // Explain State
+  explainOpen: false,
+  explainFinding: null,
+  explainLoading: false,
+  explainText: "",
+  explainSource: "local",
+  explainErr: "",
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "SET_SCAN":
+      return { ...state, scan: action.payload, err: "" };
+    case "UPDATE_SCAN_STATUS":
+      return { ...state, scan: state.scan ? { ...state.scan, status: action.payload } : null };
+    case "SET_ERROR":
+      return { ...state, err: action.payload };
+    case "SET_HISTORY":
+      return { ...state, history: action.payload };
+    case "SET_SEVERITY_FILTER":
+      return { ...state, severityFilter: action.payload };
+    case "SET_EXPORT_BUSY":
+      return { ...state, exportBusy: action.payload };
+    case "SET_DELETE_BUSY":
+      return { ...state, deleteBusy: action.payload };
+      
+    // Compare Actions
+    case "SET_COMPARE_SELECTION":
+      return { ...state, compareLeft: action.payload.left, compareRight: action.payload.right };
+    case "SET_COMPARE_LEFT":
+      return { ...state, compareLeft: action.payload };
+    case "SET_COMPARE_RIGHT":
+      return { ...state, compareRight: action.payload };
+    case "COMPARE_START":
+      return { ...state, compareLoading: true, compareErr: "", compareResult: null };
+    case "COMPARE_SUCCESS":
+      return { ...state, compareLoading: false, compareResult: action.payload };
+    case "COMPARE_ERROR":
+      return { ...state, compareLoading: false, compareErr: action.payload };
+      
+    // Explain Actions
+    case "EXPLAIN_START":
+      return {
+        ...state,
+        explainOpen: true,
+        explainFinding: action.payload,
+        explainLoading: true,
+        explainText: "",
+        explainErr: "",
+      };
+    case "EXPLAIN_SUCCESS":
+      return {
+        ...state,
+        explainLoading: false,
+        explainText: action.payload.explanation,
+        explainSource: action.payload.source,
+      };
+    case "EXPLAIN_ERROR":
+      return { ...state, explainLoading: false, explainErr: action.payload };
+    case "EXPLAIN_CLOSE":
+      return { ...state, explainOpen: false, explainFinding: null };
+      
+    case "RESET":
+      return { ...initialState };
+    default:
+      return state;
+  }
+}
+
 function ScanSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
@@ -36,23 +120,12 @@ function ScanSkeleton() {
 }
 
 export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
-  const [scan, setScan] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [err, setErr] = useState("");
-  const [compareLeft, setCompareLeft] = useState("");
-  const [compareRight, setCompareRight] = useState("");
-  const [compareResult, setCompareResult] = useState(null);
-  const [compareErr, setCompareErr] = useState("");
-  const [compareLoading, setCompareLoading] = useState(false);
-  const [explainOpen, setExplainOpen] = useState(false);
-  const [explainFinding, setExplainFinding] = useState(null);
-  const [explainLoading, setExplainLoading] = useState(false);
-  const [explainText, setExplainText] = useState("");
-  const [explainSource, setExplainSource] = useState("local");
-  const [explainErr, setExplainErr] = useState("");
-  const [exportBusy, setExportBusy] = useState(false);
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const [severityFilter, setSeverityFilter] = useState("all");
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const {
+    scan, history, err, severityFilter, exportBusy, deleteBusy,
+    compareLeft, compareRight, compareResult, compareErr, compareLoading,
+    explainOpen, explainFinding, explainLoading, explainText, explainSource, explainErr
+  } = state;
 
   const SEVERITY_TABS = ["all", "critical", "high", "medium", "low", "info"];
   const MODULE_STEPS = ["port", "dns", "subdomain", "header", "ssl", "cors", "inject"];
@@ -77,119 +150,117 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
     return "pending";
   }
 
+  // Load History
   useEffect(() => {
     listScans()
-      .then(setHistory)
-      .catch(() => setHistory([]));
+      .then((data) => dispatch({ type: "SET_HISTORY", payload: data }))
+      .catch(() => dispatch({ type: "SET_HISTORY", payload: [] }));
   }, [scanId, scan?.status]);
 
+  // Handle EventSource connection and basic polling
   useEffect(() => {
     if (!scanId) {
-      setScan(null);
+      dispatch({ type: "SET_SCAN", payload: null });
       return;
     }
 
-    setScan(null);
-    setErr("");
     let cancelled = false;
+    let es = null;
 
-    const tick = async () => {
+    dispatch({ type: "SET_SCAN", payload: null });
+    dispatch({ type: "SET_ERROR", payload: "" });
+
+    const fetchScanData = async () => {
       try {
         const data = await getScan(scanId);
         if (!cancelled) {
-          setScan(data);
-          setErr("");
+          dispatch({ type: "SET_SCAN", payload: data });
         }
       } catch (e) {
-        if (!cancelled) setErr(e.message || "Failed to load scan");
+        if (!cancelled) {
+          dispatch({ type: "SET_ERROR", payload: e.message || "Failed to load scan" });
+        }
       }
     };
 
-    tick();
-    const id = setInterval(tick, 2500);
+    fetchScanData();
+    const id = setInterval(fetchScanData, 2500);
+
+    const setupEventSource = () => {
+      try {
+        const url = scanEventsUrl(scanId);
+        es = new EventSource(url);
+        
+        es.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            if (data.error) {
+              es?.close();
+              return;
+            }
+            dispatch({ type: "UPDATE_SCAN_STATUS", payload: data.status });
+            
+            const st = data.status || "";
+            if (st === "complete" || String(st).startsWith("failed")) {
+              if (st === "complete") toast.success("Scan complete!");
+              else toast.error("Scan failed to complete.");
+              
+              es?.close();
+              // Do one final fetch
+              fetchScanData();
+            }
+          } catch {
+             // parsing err
+          }
+        };
+
+        es.onerror = () => {
+           es?.close();
+        };
+      } catch {
+         // es init err
+      }
+    };
+
+    setupEventSource();
+
     return () => {
       cancelled = true;
       clearInterval(id);
-    };
-  }, [scanId]);
-
-  useEffect(() => {
-    if (!scanId) return;
-    const url = scanEventsUrl(scanId);
-    let es;
-    try {
-      es = new EventSource(url);
-    } catch {
-      return;
-    }
-    es.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        if (data.error) {
-          es.close();
-          return;
-        }
-        setScan((prev) => (prev ? { ...prev, status: data.status } : prev));
-        const st = data.status || "";
-        if (st === "complete" || String(st).startsWith("failed")) {
-          if (st === "complete") {
-            toast.success("Scan complete!");
-          } else {
-            toast.error("Scan failed to complete.");
-          }
-          es.close();
-          getScan(scanId)
-            .then(setScan)
-            .catch(() => {});
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    es.onerror = () => {
-      try {
+      if (es) {
         es.close();
-      } catch {
-        /* ignore */
-      }
-    };
-    return () => {
-      try {
-        es.close();
-      } catch {
-        /* ignore */
       }
     };
   }, [scanId]);
 
+  // Set initial compare selections
   useEffect(() => {
     if (history.length >= 2 && !compareLeft && !compareRight) {
-      setCompareLeft(history[0].id);
-      setCompareRight(history[1].id);
+      dispatch({
+        type: "SET_COMPARE_SELECTION",
+        payload: { left: history[0].id, right: history[1].id }
+      });
     }
   }, [history, compareLeft, compareRight]);
 
   const runCompare = async () => {
     if (!compareLeft || !compareRight || compareLeft === compareRight) {
-      setCompareErr("Pick two different scans.");
+      dispatch({ type: "COMPARE_ERROR", payload: "Pick two different scans." });
       return;
     }
-    setCompareLoading(true);
-    setCompareErr("");
-    setCompareResult(null);
+    dispatch({ type: "COMPARE_START" });
     try {
       const data = await getCompare(compareLeft, compareRight);
-      setCompareResult(data);
+      dispatch({ type: "COMPARE_SUCCESS", payload: data });
     } catch (e) {
-      setCompareErr(e.message || "Compare failed");
-    } finally {
-      setCompareLoading(false);
+      dispatch({ type: "COMPARE_ERROR", payload: e.message || "Compare failed" });
+      toast.error("Compare failed: " + (e.message || "Unknown error"));
     }
   };
 
   const downloadExport = async (format) => {
     if (!scanId || exportBusy) return;
-    setExportBusy(true);
+    dispatch({ type: "SET_EXPORT_BUSY", payload: true });
     try {
       const blob = await exportScan(scanId, format);
       const url = URL.createObjectURL(blob);
@@ -198,408 +269,303 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
       a.download = `sentinel-${scanId.slice(0, 8)}.${format === "csv" ? "csv" : "json"}`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      toast.error("Export failed: " + (e.message || "Unknown error"));
     } finally {
-      setExportBusy(false);
+      dispatch({ type: "SET_EXPORT_BUSY", payload: false });
     }
   };
 
-  const handleDeleteScan = async () => {
+  const handleDelete = async () => {
     if (!scanId || deleteBusy) return;
-    if (!window.confirm("Delete this scan and all its findings? This cannot be undone.")) return;
-    setDeleteBusy(true);
+    const ok = window.confirm("Delete this scan permanently?");
+    if (!ok) return;
+
+    dispatch({ type: "SET_DELETE_BUSY", payload: true });
     try {
       await deleteScan(scanId);
-      onScanDeleted?.();
-    } catch {
-      /* ignore */
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
-
-  const handleRescan = async () => {
-    if (!scan) return;
-    try {
-      const { postScan } = await import("../api.js");
-      const res = await postScan({ target: scan.target, modules: scan.modules || [], consent: true });
-      toast.success("Rescan started");
-      window.location.hash = `#/app/${res.scan_id}`;
+      toast.success("Scan deleted");
+      if (onScanDeleted) {
+        onScanDeleted(scanId); // Navigate back to new scan
+      }
     } catch (e) {
-      toast.error(e.message || "Failed to start rescan");
+      toast.error("Delete failed: " + (e.message || "Unknown error"));
+    } finally {
+      dispatch({ type: "SET_DELETE_BUSY", payload: false });
     }
   };
 
-  const handleShare = () => {
-    if (!scanId) return;
-    const url = `${window.location.origin}/#/app/${scanId}`;
-    navigator.clipboard.writeText(url)
-      .then(() => toast.success("Link copied to clipboard!"))
-      .catch(() => toast.error("Failed to copy link"));
-  };
-
-  const openExplain = (finding) => {
-    setExplainFinding(finding);
-    setExplainOpen(true);
-    setExplainText("");
-    setExplainErr("");
-    setExplainLoading(true);
-    postExplain(finding, scan?.target || "")
-      .then((r) => {
-        setExplainText(r.explanation || "");
-        setExplainSource(r.source || "local");
-      })
-      .catch((e) => setExplainErr(e.message || "Explain failed"))
-      .finally(() => setExplainLoading(false));
-  };
-
-  const handleBatchExplain = () => {
-    const findings = scan?.findings || [];
-    const severe = findings.filter(f => (f.risk || "").toLowerCase() === "critical" || (f.risk || "").toLowerCase() === "high").slice(0, 5);
-    
-    if (severe.length === 0) {
-      toast.info("No critical or high findings found to summarize.");
-      return;
+  const handleExplain = async (finding) => {
+    dispatch({ type: "EXPLAIN_START", payload: finding });
+    try {
+      const data = await postExplain(finding, scan?.target);
+      dispatch({ type: "EXPLAIN_SUCCESS", payload: data });
+    } catch (e) {
+      const errorMsg = e.message || "Explanation failed";
+      dispatch({ type: "EXPLAIN_ERROR", payload: errorMsg });
+      toast.error("Explanation failed: " + errorMsg);
     }
-    
-    setExplainFinding({
-      title: "Batch Executive Summary",
-      type: "batch_summary",
-      risk: "info",
-      cvss: 0,
-      description: `Generating executive summary for ${severe.length} high-severity findings...`
-    });
-    setExplainOpen(true);
-    setExplainText("");
-    setExplainErr("");
-    setExplainLoading(true);
-    
-    postBatchExplain(severe, scan?.target || "")
-      .then((r) => {
-        setExplainText(r.explanation || "");
-        setExplainSource(r.source || "local");
-      })
-      .catch((e) => setExplainErr(e.message || "Batch explain failed"))
-      .finally(() => setExplainLoading(false));
   };
 
-  const complete = scan?.status === "complete";
-  const running = scan && !complete && !String(scan.status || "").startsWith("failed");
-  const showSkeleton = Boolean(scanId) && !scan && !err;
+  const handleExplainAll = async () => {
+    if (!scan?.findings?.length) return;
+    const batchFinding = { type: "batch", title: "All Findings Summary" };
+    dispatch({ type: "EXPLAIN_START", payload: batchFinding });
+    try {
+      const data = await postBatchExplain(scan.findings, scan.target);
+      dispatch({ type: "EXPLAIN_SUCCESS", payload: data });
+    } catch (e) {
+      const errorMsg = e.message || "Batch explanation failed";
+      dispatch({ type: "EXPLAIN_ERROR", payload: errorMsg });
+      toast.error("Batch explanation failed: " + errorMsg);
+    }
+  };
 
-  const filteredFindings = (scan?.findings || []).filter((f) => {
+  if (!scanId) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center p-8 text-center animate-in fade-in">
+        <div className="mb-4 rounded-full bg-surface-800/50 p-4 ring-1 ring-white/10">
+          <Activity className="h-8 w-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-100">No scan selected</h2>
+        <p className="mt-2 max-w-sm text-sm text-slate-400">
+          Enter a domain or IP address in the sidebar to start a new deep-dive vulnerability scan.
+        </p>
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <div className="p-8">
+        <Card className="flex flex-col items-center justify-center p-8 text-center bg-rose-500/5 ring-rose-500/20">
+          <ShieldAlert className="mb-4 h-10 w-10 text-rose-400" />
+          <h2 className="text-lg font-semibold text-rose-100">Failed to load footprint</h2>
+          <p className="mt-2 text-sm text-rose-300/80">{err}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!scan) {
+    return (
+      <div className="p-8">
+        <ScanSkeleton />
+      </div>
+    );
+  }
+
+  const { target, status, updated_at, findings, aggregate_cvss } = scan;
+  const inProgress = status === "running" || status.startsWith("running:") || status === "queued";
+  
+  const filteredFindings = findings?.filter((f) => {
     if (severityFilter === "all") return true;
-    return (f.risk || "").toLowerCase() === severityFilter;
+    return (f.risk || "info").toLowerCase() === severityFilter;
   });
 
+  const highCount = findings?.filter(f => ["critical", "high"].includes((f.risk || "low").toLowerCase())).length || 0;
+
   return (
-    <section className="min-w-0 space-y-6">
-        {!scanId && (
-          <Card className="animate-fade-in relative flex flex-col items-center justify-center overflow-hidden border border-white/[0.04] bg-white/[0.01] py-16 text-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_-8px_rgba(0,0,0,0.5)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.03)_0%,transparent_50%)]" aria-hidden />
-            <div className="relative mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent ring-1 ring-white/[0.08] shadow-[0_0_24px_-4px_rgba(220,38,38,0.15)]">
-              <Inbox className="h-7 w-7 text-primary/80" strokeWidth={1.25} aria-hidden />
-            </div>
-            <p className="relative max-w-md px-2 text-[15px] font-medium leading-relaxed text-slate-300">
-              Run your first scan from the configure panel. Results stream here from{" "}
-              <code className="rounded-md border border-white/[0.06] bg-black/40 px-1.5 py-0.5 font-mono text-[11px] text-primary/95 shadow-inner">
-                GET /api/scans/:id
-              </code>
-              .
-            </p>
-            <p className="mt-4 max-w-md px-2 text-xs leading-relaxed text-slate-500">
-              Developers: enable optional API keys in server env for scripted{" "}
-              <code className="font-mono text-[10px] text-slate-500">/api/*</code> access (see Docs → Security).
-            </p>
-          </Card>
-        )}
+    <div className="relative isolate px-6 py-8 pb-32">
+      <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 -translate-x-1/2 transform-gpu blur-3xl sm:-top-80">
+        <div className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-[0.08]" />
+      </div>
 
-        {err && scanId && (
-          <div className="flex items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-950/30 px-4 py-3 text-sm text-rose-200 ring-1 ring-rose-500/10">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden />
-            <span>{err}</span>
+      <header className="mb-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between animate-in slide-in-from-bottom-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-white">{target}</h1>
+            <StatusBadge status={status} />
           </div>
-        )}
-
-        {showSkeleton && <ScanSkeleton />}
-
-        {scan && !showSkeleton && (
-          <div className="animate-fade-in space-y-6">
-            <Card className="ring-1 ring-slate-800/45">
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Active target</span>
-                    <StatusBadge status={scan.status} />
-                  </div>
-                  <p className="break-all font-mono text-lg font-medium text-white sm:text-xl">{scan.target}</p>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Activity className="h-3.5 w-3.5 text-primary/85" />
-                      {running ? "Live status via SSE + polling" : complete ? "Scan finished" : "Processing"}
-                    </span>
-                    {running && (
-                      <span className="h-1 w-24 overflow-hidden rounded-full bg-slate-800">
-                        <span className="block h-full w-1/2 animate-shimmer rounded-full bg-gradient-to-r from-transparent via-primary/70 to-transparent bg-[length:200%_100%]" />
-                      </span>
-                    )}
-                  </div>
-                  {(scan.consent_at || (scan.modules || []).length > 0) && (
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600">
-                      {scan.consent_at && (
-                        <span>
-                          Consent logged{" "}
-                          <time dateTime={scan.consent_at}>{new Date(scan.consent_at).toLocaleString()}</time>
-                          {scan.consent_ip ? ` · IP ${scan.consent_ip}` : ""}
-                        </span>
-                      )}
-                      {(scan.modules || []).length > 0 && (
-                        <span className="font-mono">Modules: {(scan.modules || []).join(", ")}</span>
-                      )}
-                    </div>
-                  )}
-                  {/* Module progress bar - shown while scan is running */}
-                  {running && (scan.modules || []).length > 0 && (
-                    <div className="module-progress mt-3">
-                      {MODULE_STEPS.filter(m => (scan.modules || []).includes(m)).map((m, i, arr) => {
-                        const state = getModuleStepState(m, scan.status);
-                        return (
-                          <div key={m} className={`module-step module-step--${state}`}>
-                            <span className="module-step__label">{MODULE_LABELS[m] || m}</span>
-                            {i < arr.length - 1 && <span className="module-step__connector" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-                  <ReportDownload scanId={scanId} complete={complete} />
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      disabled={!complete || exportBusy}
-                      onClick={() => downloadExport("json")}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Export JSON
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!complete || exportBusy}
-                      onClick={() => downloadExport("csv")}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Export CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRescan}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/10 transition-colors"
-                    >
-                      <Play className="h-3.5 w-3.5" aria-hidden />
-                      Re-scan
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleShare}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/25 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:bg-indigo-500/10 transition-colors"
-                    >
-                      <Share2 className="h-3.5 w-3.5" aria-hidden />
-                      Copy Link
-                    </button>
-                    <button
-                      type="button"
-                      disabled={deleteBusy}
-                      onClick={handleDeleteScan}
-                      className="inline-flex items-center gap-1 rounded-lg border border-rose-500/25 px-3 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      Delete scan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <div className="grid gap-6 items-start lg:grid-cols-[minmax(0,260px)_1fr] xl:grid-cols-[minmax(0,280px)_1fr]">
-              <div className="sticky top-6 flex flex-col gap-6">
-                <RiskGauge score={scan.aggregate_cvss ?? 0} status={scan.status} />
-                <TrendChart target={scan.target} />
-              </div>
-              <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold tracking-tight text-white">Findings</h3>
-                    {complete && (scan?.findings || []).some(f => (f.risk || "").toLowerCase() === "critical" || (f.risk || "").toLowerCase() === "high") && (
-                      <button
-                        type="button"
-                        onClick={handleBatchExplain}
-                        className="inline-flex items-center gap-1.5 rounded bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300 transition-colors hover:bg-blue-500/20 ring-1 ring-blue-500/30"
-                      >
-                        <Activity className="h-3 w-3" />
-                        AI Summary
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Severity filter tabs */}
-                    <div className="flex flex-wrap gap-1">
-                      {SEVERITY_TABS.map((s) => {
-                        const count = s === "all" ? (scan.findings || []).length
-                          : (scan.findings || []).filter(f => (f.risk || "").toLowerCase() === s).length;
-                        if (s !== "all" && count === 0) return null;
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setSeverityFilter(s)}
-                            className={cn(
-                              "rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors",
-                              severityFilter === s
-                                ? s === "all" ? "bg-white/[0.08] text-white"
-                                : s === "critical" ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30"
-                                : s === "high" ? "bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/25"
-                                : s === "medium" ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/25"
-                                : s === "low" ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25"
-                                : "bg-slate-500/15 text-slate-300 ring-1 ring-slate-500/25"
-                                : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
-                            )}
-                          >
-                            {s} {s !== "all" && <span className="opacity-60">({count})</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <span className="rounded-md bg-white/[0.04] px-2 py-1 font-mono text-[11px] text-slate-500">
-                      {filteredFindings.length}/{(scan.findings || []).length}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {filteredFindings.map((f, i) => (
-                    <VulnCard key={`${f.type}-${i}`} finding={f} onExplain={openExplain} />
-                  ))}
-                  {complete && filteredFindings.length === 0 && (
-                    <Card className="border-dashed border-white/10 bg-transparent py-10 text-center ring-0">
-                      <FileJson2 className="mx-auto mb-2 h-8 w-8 text-slate-600" aria-hidden />
-                      <p className="text-sm text-slate-500">{severityFilter === "all" ? "No findings for this run." : `No ${severityFilter} findings.`}</p>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-4 text-sm font-medium text-slate-400">
+            <span className="flex items-center gap-1.5"><Inbox className="h-4 w-4" /> UUID: <span className="font-mono text-slate-300">{scanId.split("-")[0]}</span></span>
+            <span className="flex items-center gap-1.5">Updated: <span className="text-slate-300">{new Date(updated_at).toLocaleTimeString()}</span></span>
           </div>
-        )}
+        </div>
 
-        {history.length >= 2 && (
-          <Card className="animate-fade-in ring-1 ring-slate-800/45">
-            <div className="mb-4 flex items-center gap-2">
-              <GitCompare className="h-4 w-4 text-primary/85" aria-hidden />
-              <h3 className="text-sm font-semibold tracking-tight text-white">Compare scans</h3>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <div className="min-w-0 flex-1">
-                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  Left (baseline)
-                </label>
-                <select
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-black/40 px-4 text-xs font-medium text-slate-200 shadow-inner focus:border-primary/45 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all"
-                  value={compareLeft}
-                  onChange={(e) => setCompareLeft(e.target.value)}
-                >
-                  {history.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.target.slice(0, 48)}
-                      {h.target.length > 48 ? "…" : ""} — {h.id.slice(0, 8)}…
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="min-w-0 flex-1">
-                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  Right (newer)
-                </label>
-                <select
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-black/40 px-4 text-xs font-medium text-slate-200 shadow-inner focus:border-primary/45 focus:bg-white/[0.02] focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all"
-                  value={compareRight}
-                  onChange={(e) => setCompareRight(e.target.value)}
-                >
-                  {history.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.target.slice(0, 48)}
-                      {h.target.length > 48 ? "…" : ""} — {h.id.slice(0, 8)}…
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="button"
-                onClick={runCompare}
-                disabled={compareLoading}
-                className="h-11 shrink-0 rounded-xl border border-primary/35 bg-gradient-to-r from-primary/10 to-primary/5 shadow-[0_4px_16px_-4px_rgba(220,38,38,0.25)] px-5 text-sm font-semibold text-white transition-all hover:border-primary/50 hover:from-primary/20 hover:to-primary/10 disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/45"
-              >
-                {compareLoading ? "Comparing…" : "Compare"}
-              </button>
-            </div>
-            {compareErr && (
-              <p className="mt-3 text-sm text-rose-400" role="alert">
-                {compareErr}
-              </p>
-            )}
-            {compareResult && (
-              <div className="mt-4 space-y-3 text-sm">
-                <p className="text-xs text-slate-500">
-                  <span className="font-mono text-slate-400">{compareResult.left_target}</span>
-                  {" vs "}
-                  <span className="font-mono text-slate-400">{compareResult.right_target}</span>
-                </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {[
-                    ["Only left", compareResult.counts?.only_left],
-                    ["Only right", compareResult.counts?.only_right],
-                    ["Unchanged", compareResult.counts?.unchanged],
-                  ].map(([label, n]) => (
-                    <div
-                      key={label}
-                      className="rounded-lg border border-white/[0.06] bg-surface-900/50 px-3 py-2 text-center"
-                    >
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
-                      <div className="font-mono text-lg text-white">{n ?? "—"}</div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-8 space-y-4 pt-4 border-t border-white/10">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Detailed Differences</h4>
-                  {compareResult.items_only_right?.map((f, i) => (
-                    <VulnCard key={`new-${i}`} finding={f} defaultExpanded badge="NEW ISSUE" badgeColor="blue" />
-                  ))}
-                  {compareResult.items_only_left?.map((f, i) => (
-                    <VulnCard key={`fixed-${i}`} finding={f} badge="FIXED" badgeColor="green" />
-                  ))}
-                  {compareResult.items_unchanged?.map((f, i) => (
-                    <VulnCard key={`unchanged-${i}`} finding={f} badge="UNCHANGED" />
-                  ))}
-                </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => handleExplainAll()}
+            disabled={explainLoading || inProgress || !findings?.length}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600/10 px-4 py-2.5 text-sm font-semibold text-orange-400 shadow-sm ring-1 ring-inset ring-orange-500/20 hover:bg-orange-600/20 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <Share2 className="h-4 w-4" /> Explain Output
+          </button>
+          <ReportDownload
+            scanId={scanId}
+            onExport={downloadExport}
+            busy={exportBusy}
+            disabled={inProgress}
+          />
+          <button
+            onClick={handleDelete}
+            disabled={deleteBusy}
+            className="inline-flex items-center justify-center rounded-xl bg-surface-800 p-2.5 text-slate-400 ring-1 ring-inset ring-white/10 hover:bg-rose-500/10 hover:text-rose-400 hover:ring-rose-500/20 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            {deleteBusy ? <Activity className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+          </button>
+        </div>
+      </header>
+
+      {inProgress && (
+         <Card className="mb-8 p-6 bg-surface-800/40 ring-indigo-500/10 animate-in fade-in">
+           <div className="flex items-center justify-between mb-4">
+             <h3 className="text-sm font-semibold text-indigo-300 flex items-center gap-2">
+               <Activity className="h-4 w-4 animate-pulse" /> Scanning Engine Active
+             </h3>
+             <span className="text-xs font-mono text-slate-500">{status}</span>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
+             {MODULE_STEPS.map((mod) => {
+               const st = getModuleStepState(mod, status);
+               return (
+                 <div key={mod} className="flex flex-col gap-1.5">
+                   <div className="h-1.5 w-full rounded-full bg-surface-900 overflow-hidden">
+                     {st === "done" && <div className="h-full bg-emerald-500 w-full" />}
+                     {st === "active" && <div className="h-full bg-indigo-500 animate-[progress_1s_infinite]" style={{width: '60%'}} />}
+                   </div>
+                   <span className={cn(
+                     "text-[10px] font-medium uppercase tracking-wider",
+                     st === "done" ? "text-emerald-400" : st === "active" ? "text-indigo-400" : "text-slate-600"
+                   )}>{MODULE_LABELS[mod] || mod}</span>
+                 </div>
+               )
+             })}
+           </div>
+         </Card>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-3 animate-in slide-in-from-bottom-4 duration-500 delay-100">
+        <RiskGauge cvss={aggregate_cvss || 0.0} label="Threat Index" loading={inProgress} />
+        
+        <Card className="flex flex-col p-6 bg-surface-800/40 hover:bg-surface-800/60 transition-colors group">
+          <div className="flex items-center gap-2 text-rose-400 mb-2">
+            <ShieldAlert className="h-5 w-5" />
+            <h3 className="font-semibold">High Priority</h3>
+          </div>
+          <div className="mt-auto">
+            <span className="text-5xl font-black tracking-tighter text-white group-hover:text-rose-100 transition-colors">{inProgress ? "-" : highCount}</span>
+            <p className="text-sm font-medium text-slate-400 mt-1">Exposures require attention</p>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col p-6 bg-surface-800/40 hover:bg-surface-800/60 transition-colors">
+          <div className="flex items-center gap-2 text-indigo-400 mb-2">
+            <GitCompare className="h-5 w-5" />
+            <h3 className="font-semibold">Compare Profile</h3>
+          </div>
+          <div className="mt-auto space-y-2">
+             <select
+              value={compareLeft}
+              onChange={(e) => dispatch({ type: "SET_COMPARE_LEFT", payload: e.target.value })}
+              className="w-full text-xs bg-surface-900 border border-white/5 rounded p-1.5 text-slate-300"
+            >
+              <option value="">Baseline...</option>
+              {history.map((s) => (
+                <option key={s.id} value={s.id}>{s.id.slice(0,6)} : {s.target}</option>
+              ))}
+            </select>
+            <select
+              value={compareRight}
+              onChange={(e) => dispatch({ type: "SET_COMPARE_RIGHT", payload: e.target.value })}
+              className="w-full text-xs bg-surface-900 border border-white/5 rounded p-1.5 text-slate-300"
+            >
+              <option value="">Target...</option>
+              {history.map((s) => (
+                <option key={s.id} value={s.id}>{s.id.slice(0,6)} : {s.target}</option>
+              ))}
+            </select>
+            <button
+              onClick={runCompare}
+              disabled={compareLoading || history.length < 2}
+              className="w-full mt-2 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs rounded border border-indigo-500/20 font-medium cursor-pointer"
+            >
+              {compareLoading ? "Running Diff..." : "Generate Diff"}
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-8 grid gap-8 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6">
+          <div className="flex items-center gap-4">
+             <h2 className="text-xl font-bold text-white flex items-center gap-2">
+               <FileJson2 className="h-5 w-5 text-indigo-400" />
+               Identified Payloads
+             </h2>
+             <div className="ml-auto inline-flex rounded-md bg-surface-900 p-1 ring-1 ring-white/5">
+                {SEVERITY_TABS.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => dispatch({ type: "SET_SEVERITY_FILTER", payload: tab })}
+                    className={cn(
+                      "rounded px-3 py-1 text-xs font-semibold capitalize transition-all",
+                      severityFilter === tab ? "bg-surface-700 text-white shadow" : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+             </div>
+          </div>
+          
+          <div className="flex flex-col gap-3 min-h-[400px] border border-white/5 rounded-2xl p-4 bg-surface-800/10">
+            {!findings?.length && !inProgress && (
+              <div className="text-center py-20 text-slate-400 text-sm">
+                No payloads detected for this footprint.
               </div>
             )}
-          </Card>
-        )}
+            
+            {filteredFindings?.map((f, i) => (
+              <VulnCard 
+                key={i} 
+                finding={f} 
+                onExplain={() => handleExplain(f)}
+                disabled={inProgress}
+              />
+            ))}
+          </div>
+        </div>
 
-        <FindingDrawer
-          open={explainOpen}
-          title={explainFinding?.title || explainFinding?.type || ""}
-          loading={explainLoading}
-          explanation={explainText}
-          source={explainSource}
-          error={explainErr}
-          onClose={() => {
-            setExplainOpen(false);
-            setExplainFinding(null);
-          }}
-        />
-    </section>
+        <div className="space-y-6">
+           <TrendChart target={target} />
+           
+           {compareResult && (
+              <Card className="p-5 bg-surface-800/40 ring-1 ring-indigo-500/20">
+                 <h3 className="font-bold text-sm text-indigo-300 mb-3 border-b border-white/5 pb-2">Diff Analysis</h3>
+                 <div className="space-y-2 text-sm text-slate-300">
+                    <div className="flex justify-between">
+                       <span>Score Delta:</span>
+                       <span className={compareResult.health_delta > 0 ? "text-emerald-400" : "text-rose-400"}>
+                          {compareResult.health_delta > 0 ? "+" : ""}{compareResult.health_delta ? compareResult.health_delta.toFixed(1) : 0}
+                       </span>
+                    </div>
+                    {compareResult.new_findings?.length > 0 && (
+                      <div className="mt-4">
+                         <span className="text-xs text-rose-400 font-semibold uppercase tracking-wider block mb-1">New Vectors</span>
+                         <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
+                           {compareResult.new_findings.slice(0,3).map((nf, idx) => (
+                             <li key={idx}>{nf.title || nf.type}</li>
+                           ))}
+                         </ul>
+                      </div>
+                    )}
+                 </div>
+              </Card>
+           )}
+        </div>
+      </div>
+
+      <FindingDrawer
+        open={explainOpen}
+        onClose={() => dispatch({ type: "EXPLAIN_CLOSE" })}
+        finding={explainFinding}
+        loading={explainLoading}
+        explanation={explainText}
+        source={explainSource}
+        error={explainErr}
+        target={target}
+      />
+    </div>
   );
 }

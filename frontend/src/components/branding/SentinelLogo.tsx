@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '../../lib/cn.js';
 
 /** Brand lockup asset (shield + SENTINEL + SCANNER) — place PNG in `public/logo-sentinel-lockup.png` */
-export const SENTINEL_LOGO_SRC = '/logo-sentinel-lockup.png';
+export const SENTINEL_LOGO_SRC = '/logo-sentinel-lockup.svg';
 
 function LogoImage({
   size,

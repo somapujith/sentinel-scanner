@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, X, AlertTriangle, Lightbulb, Shield } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 const TABS = [
   { id: "problem", label: "Problem", icon: AlertTriangle },
@@ -186,9 +188,12 @@ export default function FindingDrawer({ open, title, loading, explanation, sourc
           )}
           {!loading && !error && explanation && (
             <div className="prose prose-invert prose-sm max-w-none">
-              <p className="whitespace-pre-wrap text-[14px] leading-[1.8] text-slate-300">
-                {activeContent}
-              </p>
+               <div
+                  className="whitespace-pre-wrap text-[14px] leading-[1.8] text-slate-300"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked.parse(activeContent))
+                  }}
+               />
             </div>
           )}
         </div>

@@ -1,14 +1,33 @@
-FROM node:20-alpine
+# Build Stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
 
 COPY . .
+RUN npm run build
 
-EXPOSE 5178
+# Serve Stage
+FROM nginx:alpine
 
-ENV VITE_API_PROXY_TARGET=http://backend:8000
+# Remove default nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5178"]
+# Copy static assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Replace default Nginx configuration to support Client Side Routing (SPA)
+RUN printf 'server {\n\
+    listen 80;\n\
+    server_name localhost;\n\
+    location / {\n\
+        root /usr/share/nginx/html;\n\
+        index index.html index.htm;\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

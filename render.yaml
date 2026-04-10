@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: vulnerability-scanner-backend
+    env: docker
+    region: ohio
+    plan: free
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: CORS_ORIGINS
+        value: "https://vulnerability-scanner.vercel.app,http://localhost:5178"
+      - key: DATABASE_URL
+        value: "sqlite:///./sentinel.db" # Replace with PG database URL on Render if needed
+      - key: LLM_API_KEY
+        sync: false
+    autoDeploy: true

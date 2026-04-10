@@ -145,11 +145,10 @@ def build_pdf_report(scan_id: str, target: str, findings: list[dict[str, Any]]) 
     story.append(Spacer(1, 5 * cm))
     
     import os
-    logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "logo-sentinel-lockup.png"))
-    if os.path.exists(logo_path):
-        story.append(Image(logo_path, width=8*cm, height=1.6*cm))
-    else:
-        story.append(Paragraph("<b>Sentinel</b><font color='#94a3b8'>Scanner</font>", ParagraphStyle("Logo", parent=title_style, fontSize=42, leading=48, spaceAfter=20)))
+    # SVG unsupported natively, falling back to text
+    logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "logo-sentinel-lockup.svg"))
+    
+    story.append(Paragraph("<b>Sentinel</b><font color='#94a3b8'>Scanner</font>", ParagraphStyle("Logo", parent=title_style, fontSize=42, leading=48, spaceAfter=20)))
         
     story.append(Spacer(1, 1 * cm))
     
