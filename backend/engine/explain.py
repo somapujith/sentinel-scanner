@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 
 async def explain_finding(finding: dict[str, Any], target_hint: str) -> dict[str, Any]:
     """Return structured security analysis; prioritizes Gemini, OpenRouter, then OpenAI/Anthropic."""
-    from dotenv import load_dotenv
-    import os
-    load_dotenv(override=True)
+    from pathlib import Path
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(env_path, override=True)
     
     risk = finding.get("risk", "unknown")
     ftype = finding.get("type", "issue")
@@ -32,9 +32,10 @@ async def explain_finding(finding: dict[str, Any], target_hint: str) -> dict[str
     )
 
 async def batch_explain_findings(findings: list[dict[str, Any]], target_hint: str) -> dict[str, Any]:
-    from dotenv import load_dotenv
+    from pathlib import Path
     import json
-    load_dotenv(override=True)
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(env_path, override=True)
     
     return await _query_llm(
         "You are a Senior DevSecOps Engineer. The user has requested a batch explanation of "
@@ -48,6 +49,10 @@ async def batch_explain_findings(findings: list[dict[str, Any]], target_hint: st
 
 async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
     import os
+    from pathlib import Path
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(env_path, override=True)
+
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
