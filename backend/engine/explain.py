@@ -53,6 +53,9 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     
+    api_errors = []
+    has_keys = bool(gemini_key or openrouter_key or openai_key or anthropic_key)
+    
     print(f"DEBUG: Found keys - Gemini: {'Yes' if gemini_key else 'No'}, OpenRouter: {'Yes' if openrouter_key else 'No'}, OpenAI: {'Yes' if openai_key else 'No'}")
     
     # 1. Try Google Gemini (Generous free tier)
@@ -65,6 +68,8 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                     json={"contents": [{"parts": [{"text": prompt}]}]},
                     headers={"Content-Type": "application/json"}
                 )
+                if r.status_code != 200:
+                    api_errors.append(f"Gemini HTTP {r.status_code}: {r.text}")
                 r.raise_for_status()
                 data = r.json()
                 if "candidates" not in data:
@@ -74,7 +79,8 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                 return {"explanation": out.strip(), "source": "gemini"}
         except Exception as e:
             print(f"DEBUG: Gemini call failed - {e}")
-            pass
+            if not any(f"Gemini HTTP" in err for err in api_errors):
+                api_errors.append(f"Gemini exception: {str(e)}")
 
     # 2. Try OpenRouter (Versatile multi-model fallback)
     if openrouter_key:
@@ -94,6 +100,8 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                         "max_tokens": 512,
                     },
                 )
+                if r.status_code != 200:
+                    api_errors.append(f"OpenRouter HTTP {r.status_code}: {r.text}")
                 r.raise_for_status()
                 data = r.json()
                 if "choices" not in data:
@@ -103,7 +111,8 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                 return {"explanation": out.strip(), "source": "openrouter"}
         except Exception as e:
             print(f"DEBUG: OpenRouter call failed - {e}")
-            pass
+            if not any(f"OpenRouter HTTP" in err for err in api_errors):
+                api_errors.append(f"OpenRouter exception: {str(e)}")
 
     # 3. Try OpenAI (Standard fallback)
     if openai_key:
@@ -118,12 +127,16 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                         "max_tokens": 512,
                     },
                 )
+                if r.status_code != 200:
+                    api_errors.append(f"OpenAI HTTP {r.status_code}: {r.text}")
                 r.raise_for_status()
                 data = r.json()
                 out = data["choices"][0]["message"]["content"]
                 return {"explanation": out.strip(), "source": "openai"}
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"DEBUG: OpenAI call failed - {e}")
+            if not any(f"OpenAI HTTP" in err for err in api_errors):
+                api_errors.append(f"OpenAI exception: {str(e)}")
 
     # 4. Try Anthropic (Original implementation)
     if anthropic_key:
@@ -134,14 +147,21 @@ async def _query_llm(prompt: str, fallback_text: str) -> dict[str, Any]:
                     headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
                     json={"model": "claude-3-5-haiku-20241022", "max_tokens": 512, "messages": [{"role": "user", "content": prompt}]},
                 )
+                if r.status_code != 200:
+                    api_errors.append(f"Anthropic HTTP {r.status_code}: {r.text}")
                 r.raise_for_status()
                 data = r.json()
                 out = data["content"][0]["text"]
                 return {"explanation": out.strip(), "source": "anthropic"}
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"DEBUG: Anthropic call failed - {e}")
+            if not any(f"Anthropic HTTP" in err for err in api_errors):
+                api_errors.append(f"Anthropic exception: {str(e)}")
 
     # Final Fallback (Local Summary)
+    if has_keys and api_errors:
+        return {"explanation": f"**API Keys are configured, but the requests failed!**\n\nErrors:\n" + "\n".join(f"- {e}" for e in api_errors), "source": "error"}
+    
     return {"explanation": fallback_text, "source": "local"}
 
 
