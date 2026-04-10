@@ -16,7 +16,7 @@ def _split_csv(val: str) -> list[str]:
 def cors_origins() -> list[str]:
     raw = os.environ.get(
         "SENTINEL_CORS_ORIGINS",
-        "http://localhost:5178,http://127.0.0.1:5178,http://frontend:5178",
+        "http://localhost:5178,http://127.0.0.1:5178,http://frontend:5178,https://sentinel-scanner.vercel.app",
     )
     return _split_csv(raw)
 
