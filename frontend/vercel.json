@@ -1,18 +1,14 @@
 {
-  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://vulnerability-scanner-backend-ll99.onrender.com/api/$1"
+      "source": "/api/(.*)",
+      "destination": "https://vulnerability-scanner-backend-ll99.onrender.com/api/$1"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
