@@ -5,7 +5,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://vulnerability-scanner-backend.onrender.com/api/$1"
+      "dest": "https://vulnerability-scanner-backend-ll99.onrender.com/api/$1"
     },
     {
       "handle": "filesystem"
