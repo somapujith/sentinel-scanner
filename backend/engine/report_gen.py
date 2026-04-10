@@ -16,7 +16,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak, Image
 
-from engine import risk_scorer
+from backend.engine import risk_scorer
 
 # Brand palette (dark header, accent, risk hues)
 _PRIMARY = colors.HexColor("#0f172a")
