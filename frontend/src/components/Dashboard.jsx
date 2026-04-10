@@ -436,7 +436,7 @@ export default function Dashboard({ scanId, onSelectScan, onScanDeleted }) {
       )}
 
       <div className="grid gap-6 md:grid-cols-3 animate-in slide-in-from-bottom-4 duration-500 delay-100">
-        <RiskGauge cvss={aggregate_cvss || 0.0} label="Threat Index" loading={inProgress} />
+        <RiskGauge score={aggregate_cvss || 0.0} label="Security Score" status={status} />
         
         <Card className="flex flex-col p-6 bg-surface-800/40 hover:bg-surface-800/60 transition-colors group">
           <div className="flex items-center gap-2 text-rose-400 mb-2">
